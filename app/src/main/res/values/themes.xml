@@ -1,0 +1,6 @@
+<resources>
+    <!-- Base theme for Compose app: AppCompat NoActionBar keeps it simple -->
+    <style name="Theme.EasyMoney" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
