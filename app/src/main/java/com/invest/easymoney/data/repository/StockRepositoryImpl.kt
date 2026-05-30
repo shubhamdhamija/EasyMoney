@@ -12,12 +12,13 @@ import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.repository.StockRepository
 import com.invest.easymoney.util.Constants
 import com.invest.easymoney.util.Resource
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 @Singleton
 class StockRepositoryImpl @Inject constructor(

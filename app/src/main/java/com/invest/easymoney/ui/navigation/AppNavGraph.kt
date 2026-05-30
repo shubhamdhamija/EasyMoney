@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -24,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.invest.easymoney.ui.alerts.AlertsScreen
 import com.invest.easymoney.ui.detail.StockDetailScreen
+import com.invest.easymoney.ui.detail.StockDetailViewModel
 import com.invest.easymoney.ui.home.HomeScreen
 import com.invest.easymoney.ui.watchlist.WatchlistScreen
 
@@ -72,8 +74,10 @@ fun AppNavGraph() {
             composable(
                 route = "detail/{symbol}",
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType })
-            ) {
-                StockDetailScreen(onBack = { navController.popBackStack() })
+            ) { backStackEntry ->
+                // Pass the NavBackStackEntry into the hiltViewModel so SavedStateHandle receives the route args
+                val vm: StockDetailViewModel = hiltViewModel(backStackEntry)
+                StockDetailScreen(onBack = { navController.popBackStack() }, viewModel = vm)
             }
         }
     }
