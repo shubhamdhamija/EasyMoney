@@ -7,38 +7,35 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = RoyalBlue,
-    onPrimary = OnPrimaryLight,
-    primaryContainer = LightBlue,
-    secondary = GainGreen,
-    onSecondary = OnPrimaryLight,
-    error = LossRed,
-    background = BackgroundLight,
-    onBackground = OnSurfaceLight,
-    surface = SurfaceLight,
-    onSurface = OnSurfaceLight,
-    surfaceVariant = CardLight,
-    outline = SubtextLight
+    primary = Teal700,
+    secondary = Accent,
+    background = Background,
+    surface = Surface,
+    error = Red500,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onBackground = PrimaryText,
+    onSurface = PrimaryText,
+    onError = Color.White
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = LightBlue,
-    onPrimary = NavyBlue,
-    primaryContainer = RoyalBlue,
-    secondary = GainGreenLight,
-    onSecondary = SurfaceDark,
-    error = LossRedLight,
+    primary = Teal200,
+    secondary = Accent,
     background = BackgroundDark,
-    onBackground = OnSurfaceDark,
     surface = SurfaceDark,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = CardDark,
-    outline = SubtextDark
+    error = Red700,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onBackground = Color.White,
+    onSurface = Color.White,
+    onError = Color.White
 )
 
 @Composable

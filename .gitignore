@@ -8,7 +8,7 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
-/build
+/buildcommand -v asdf >/dev/null && asdf_update_java_home
 **/build/
 /captures
 .externalNativeBuild

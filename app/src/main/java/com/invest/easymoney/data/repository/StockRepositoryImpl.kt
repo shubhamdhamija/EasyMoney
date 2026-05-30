@@ -14,7 +14,6 @@ import com.invest.easymoney.util.Constants
 import com.invest.easymoney.util.Resource
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject

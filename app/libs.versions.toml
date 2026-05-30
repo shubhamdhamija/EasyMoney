@@ -1,0 +1,6 @@
+[versions]
+compose-charts = "1.0.0-beta01"
+
+[libraries]
+compose-charts = { module = "com.patrykandpatrick.vico:compose-m3", version.ref = "compose-charts" }
+

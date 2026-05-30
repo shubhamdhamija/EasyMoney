@@ -1,5 +1,6 @@
 package com.invest.easymoney.ui.watchlist
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,9 +17,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.invest.easymoney.domain.model.Stock
-import com.invest.easymoney.ui.theme.GainGreen
-import com.invest.easymoney.ui.theme.LossRed
+import com.invest.easymoney.ui.theme.*
 import com.invest.easymoney.util.Resource
+import java.util.Locale
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
