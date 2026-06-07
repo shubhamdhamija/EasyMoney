@@ -2,9 +2,11 @@ package com.invest.easymoney.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.StarBorder
@@ -23,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.invest.easymoney.ui.aihub.AiHubScreen
 import com.invest.easymoney.ui.alerts.AlertsScreen
 import com.invest.easymoney.ui.detail.StockDetailScreen
 import com.invest.easymoney.ui.detail.StockDetailViewModel
@@ -37,10 +40,11 @@ sealed class Screen(
 ) {
     data object Home : Screen("home", "Home", Icons.Filled.Home, Icons.Outlined.Home)
     data object Watchlist : Screen("watchlist", "Watchlist", Icons.Filled.Star, Icons.Outlined.StarBorder)
+    data object AiHub : Screen("aihub", "AI Hub", Icons.Filled.AutoAwesome, Icons.Outlined.AutoAwesome)
     data object Alerts : Screen("alerts", "Alerts", Icons.Filled.Notifications, Icons.Outlined.Notifications)
 }
 
-val bottomNavItems = listOf(Screen.Home, Screen.Watchlist, Screen.Alerts)
+val bottomNavItems = listOf(Screen.Home, Screen.Watchlist, Screen.AiHub, Screen.Alerts)
 
 @Composable
 fun AppNavGraph() {
@@ -68,6 +72,9 @@ fun AppNavGraph() {
                     }
                 )
             }
+            composable(Screen.AiHub.route) {
+                AiHubScreen()
+            }
             composable(Screen.Alerts.route) {
                 AlertsScreen()
             }
@@ -75,7 +82,6 @@ fun AppNavGraph() {
                 route = "detail/{symbol}",
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType })
             ) { backStackEntry ->
-                // Pass the NavBackStackEntry into the hiltViewModel so SavedStateHandle receives the route args
                 val vm: StockDetailViewModel = hiltViewModel(backStackEntry)
                 StockDetailScreen(onBack = { navController.popBackStack() }, viewModel = vm)
             }
@@ -88,7 +94,6 @@ private fun AppBottomBar(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Hide bottom bar on detail screen
     val showBottomBar = bottomNavItems.any { screen ->
         currentDestination?.hierarchy?.any { it.route == screen.route } == true
     }

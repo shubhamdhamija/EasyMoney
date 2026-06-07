@@ -49,6 +49,13 @@ class HomeViewModel @Inject constructor(
 
     private var aiPicksJob: Job? = null
 
+    // Search state
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery
+
+    private val _searchState = MutableStateFlow<Resource<List<com.invest.easymoney.domain.model.StockSearchResult>>>(Resource.Success(emptyList()))
+    val searchState = _searchState
+
     init {
         loadStocks()
     }
@@ -77,5 +84,17 @@ class HomeViewModel @Inject constructor(
     fun dismissAiPicks() {
         _aiPicksState.value = null
     }
-}
 
+    fun setSearchQuery(q: String) {
+        _searchQuery.value = q
+    }
+
+    fun searchSymbols() {
+        val q = _searchQuery.value.trim()
+        if (q.isEmpty()) return
+        viewModelScope.launch {
+            _searchState.value = Resource.Loading
+            _searchState.value = repository.searchSymbols(q)
+        }
+    }
+}

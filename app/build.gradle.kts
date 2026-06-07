@@ -55,6 +55,7 @@ dependencies {
     // Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.ui)
 
     // Compose
     val composeBom = platform(libs.androidx.compose.bom)
@@ -108,9 +109,26 @@ dependencies {
     // Gson
     implementation(libs.gson)
 
+    // MPAndroidChart - interactive, mature charting library
+  //  implementation("com.github.PhilJay:MPAndroidChart:3.1.0")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+
+    implementation("com.patrykandpatrick.vico:compose:1.16.1")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.16.1")
+    implementation("com.patrykandpatrick.vico:core:1.16.1")
+
+
+
+
+
+
+
+
+
 }

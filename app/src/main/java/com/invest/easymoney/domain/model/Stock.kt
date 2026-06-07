@@ -13,5 +13,6 @@ data class Stock(
     val marketCap: Double = 0.0,
     val logoUrl: String = "",
     val exchange: String = "",
-    val industry: String = ""
+    val industry: String = "",
+    val intradayPrices: List<IntradayPricePoint> = emptyList()
 )

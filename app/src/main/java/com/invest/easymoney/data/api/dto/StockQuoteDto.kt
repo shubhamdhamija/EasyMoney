@@ -13,7 +13,17 @@ data class ChartBody(
 )
 
 data class ChartResult(
-    @SerializedName("meta") val meta: ChartMeta = ChartMeta()
+    @SerializedName("meta") val meta: ChartMeta = ChartMeta(),
+    @SerializedName("timestamp") val timestamp: List<Long>? = emptyList(),
+    @SerializedName("indicators") val indicators: Indicators? = null
+)
+
+data class Indicators(
+    @SerializedName("quote") val quote: List<QuoteIndicator>? = emptyList()
+)
+
+data class QuoteIndicator(
+    @SerializedName("close") val close: List<Double?>? = emptyList()
 )
 
 data class ChartMeta(

@@ -3,12 +3,14 @@ package com.invest.easymoney.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.invest.easymoney.di.DeviceId
 import com.invest.easymoney.domain.model.Alert
 import com.invest.easymoney.domain.model.AlertType
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
 import com.invest.easymoney.domain.repository.AiInsightRepository
+import com.invest.easymoney.domain.repository.BackendRepository
 import com.invest.easymoney.domain.repository.StockRepository
 import com.invest.easymoney.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +25,9 @@ import javax.inject.Inject
 class StockDetailViewModel @Inject constructor(
     private val repository: StockRepository,
     private val aiRepository: AiInsightRepository,
-    savedStateHandle: SavedStateHandle
+    private val backendRepository: BackendRepository,
+    savedStateHandle: SavedStateHandle,
+    @DeviceId private val deviceId: String
 ) : ViewModel() {
 
     val symbol: String = checkNotNull(savedStateHandle["symbol"])
@@ -36,6 +40,9 @@ class StockDetailViewModel @Inject constructor(
 
     private val _insightState = MutableStateFlow<Resource<StockInsight>>(Resource.Loading)
     val insightState: StateFlow<Resource<StockInsight>> = _insightState
+
+    private val _explainState = MutableStateFlow<Resource<String>?>(null)
+    val explainState: StateFlow<Resource<String>?> = _explainState
 
     private val _isInWatchlist = MutableStateFlow(false)
     val isInWatchlist: StateFlow<Boolean> = _isInWatchlist
@@ -86,10 +93,14 @@ class StockDetailViewModel @Inject constructor(
                 repository.removeFromWatchlist(symbol)
                 _isInWatchlist.value = false
                 _snackbarMessage.value = "$symbol removed from watchlist"
+                // Notify community (fire-and-forget)
+                launch { backendRepository.notifyWatchlistChange(deviceId, symbol, "remove") }
             } else {
                 repository.addToWatchlist(symbol)
                 _isInWatchlist.value = true
                 _snackbarMessage.value = "$symbol added to watchlist"
+                // Notify community (fire-and-forget)
+                launch { backendRepository.notifyWatchlistChange(deviceId, symbol, "add") }
             }
         }
     }
@@ -103,6 +114,18 @@ class StockDetailViewModel @Inject constructor(
 
     fun clearSnackbar() {
         _snackbarMessage.value = null
+    }
+
+    fun explainMove() {
+        if (_explainState.value is Resource.Loading) return
+        viewModelScope.launch {
+            _explainState.value = Resource.Loading
+            _explainState.value = backendRepository.explainMove(symbol)
+        }
+    }
+
+    fun dismissExplain() {
+        _explainState.value = null
     }
 }
 

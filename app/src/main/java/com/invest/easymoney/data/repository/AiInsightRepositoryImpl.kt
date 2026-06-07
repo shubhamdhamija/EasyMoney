@@ -87,7 +87,11 @@ class AiInsightRepositoryImpl @Inject constructor(
 
             Resource.Success(insight)
         }.getOrElse { e ->
-            Resource.Error(mapApiError(e))
+            if (isNetworkError(e)) {
+                Resource.Success(buildFallbackInsight(symbol, stock, news))
+            } else {
+                Resource.Error(mapApiError(e))
+            }
         }
     }
 
@@ -135,7 +139,11 @@ class AiInsightRepositoryImpl @Inject constructor(
 
             Resource.Success(picks)
         }.getOrElse { e ->
-            Resource.Error(mapApiError(e))
+            if (isNetworkError(e)) {
+                Resource.Success(buildFallbackPicks(stocks))
+            } else {
+                Resource.Error(mapApiError(e))
+            }
         }
     }
 
@@ -208,10 +216,64 @@ Respond with ONLY this JSON (no extra text):
 
     // ── Error Mapping ─────────────────────────────────────────────────────────
 
+    private fun isNetworkError(e: Throwable): Boolean {
+        val msg = e.message?.lowercase() ?: ""
+        return msg.contains("failed to connect") ||
+            msg.contains("unable to resolve") ||
+            msg.contains("connection refused") ||
+            msg.contains("timeout") ||
+            msg.contains("no route to host") ||
+            e is java.net.ConnectException ||
+            e is java.net.SocketTimeoutException ||
+            e is java.net.UnknownHostException
+    }
+
     private fun mapApiError(e: Throwable): String = when {
         e.message?.contains("429") == true -> "AI rate limit reached. Please try again in a moment."
         e.message?.contains("timeout", ignoreCase = true) == true -> "AI request timed out. Please try again."
         else -> "AI insight unavailable: ${e.message ?: "Unknown error"}"
+    }
+
+    // ── Offline Fallbacks ─────────────────────────────────────────────────────
+
+    private fun buildFallbackInsight(symbol: String, stock: Stock, news: List<News>): StockInsight {
+        val sentiment = when {
+            stock.changePercent >= 2.0 -> "bullish"
+            stock.changePercent <= -2.0 -> "bearish"
+            else -> "neutral"
+        }
+        val directionWord = when (sentiment) {
+            "bullish" -> "up"
+            "bearish" -> "down"
+            else -> "relatively flat"
+        }
+        val changeSign = if (stock.changePercent >= 0) "+" else ""
+        val pctFormatted = "${changeSign}${String.format("%.2f", stock.changePercent)}%"
+        val topHeadline = news.firstOrNull()?.headline?.let { ". Recent news: $it" } ?: ""
+        return StockInsight(
+            symbol = symbol,
+            sentiment = sentiment,
+            insight = "$symbol is trading ${directionWord} ${pctFormatted} today${topHeadline}. " +
+                "This analysis is based on live price data (AI offline).",
+            shortTermOutlook = "Short-term trend appears ${directionWord}. Monitor support/resistance levels.",
+            longTermOutlook = "Long-term outlook depends on fundamentals and broader market conditions."
+        )
+    }
+
+    private fun buildFallbackPicks(stocks: List<Stock>): List<AiPick> {
+        return stocks
+            .filter { it.changePercent != 0.0 }
+            .sortedByDescending { kotlin.math.abs(it.changePercent) }
+            .take(3)
+            .map { s ->
+                val dir = if (s.changePercent > 0) "gaining" else "declining"
+                val sign = if (s.changePercent >= 0) "+" else ""
+                AiPick(
+                    symbol = s.symbol,
+                    reason = "${s.symbol} is ${dir} ${sign}${String.format("%.2f", s.changePercent)}% today, " +
+                        "showing notable price movement worth monitoring. (AI offline — based on live data)"
+                )
+            }
     }
 }
 

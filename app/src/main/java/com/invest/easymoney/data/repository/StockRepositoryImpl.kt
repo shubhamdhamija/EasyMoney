@@ -1,5 +1,6 @@
 package com.invest.easymoney.data.repository
 
+import android.util.Log
 import com.invest.easymoney.data.api.YahooFinanceApiService
 import com.invest.easymoney.data.local.dao.AlertDao
 import com.invest.easymoney.data.local.dao.WatchlistDao
@@ -9,6 +10,7 @@ import com.invest.easymoney.domain.model.Alert
 import com.invest.easymoney.domain.model.AlertType
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
+import com.invest.easymoney.domain.model.IntradayPricePoint
 import com.invest.easymoney.domain.repository.StockRepository
 import com.invest.easymoney.util.Constants
 import com.invest.easymoney.util.Resource
@@ -36,9 +38,22 @@ class StockRepositoryImpl @Inject constructor(
     }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch stocks") }
 
     override suspend fun getStockDetail(symbol: String): Resource<Stock> = runCatching {
-        val meta = api.getChart(symbol).chart?.result?.firstOrNull()?.meta
+        val result = api.getChart(symbol).chart?.result?.firstOrNull()
             ?: return Resource.Error("No data for $symbol")
-        Resource.Success(meta.toStock())
+        val meta = result.meta
+        // Build intraday points from timestamps + indicators
+        val timestamps = result.timestamp ?: emptyList()
+        val closes = result.indicators?.quote?.firstOrNull()?.close ?: emptyList()
+        val points = mutableListOf<IntradayPricePoint>()
+        val size = minOf(timestamps.size, closes.size)
+        for (i in 0 until size) {
+            val ts = timestamps[i]
+            val c = closes[i]
+            if (c != null) points.add(IntradayPricePoint(time = ts.toString(), price = c.toFloat()))
+        }
+        Log.d("StockRepository", "getStockDetail: $symbol -> points=${points.size}, timestamps=${timestamps.size}, closes=${closes.size}")
+        val stock = meta.toStock().copy(intradayPrices = points)
+        Resource.Success(stock)
     }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch $symbol") }
 
     override suspend fun fetchStocksForSymbols(symbols: List<String>): Resource<List<Stock>> {
@@ -53,7 +68,19 @@ class StockRepositoryImpl @Inject constructor(
         symbols.map { symbol ->
             async {
                 runCatching {
-                    api.getChart(symbol).chart?.result?.firstOrNull()?.meta?.toStock()
+                    api.getChart(symbol).chart?.result?.firstOrNull()?.let { res ->
+                        val meta = res.meta
+                        val timestamps = res.timestamp ?: emptyList()
+                        val closes = res.indicators?.quote?.firstOrNull()?.close ?: emptyList()
+                        val points = mutableListOf<IntradayPricePoint>()
+                        val size = minOf(timestamps.size, closes.size)
+                        for (i in 0 until size) {
+                            val ts = timestamps[i]
+                            val c = closes[i]
+                            if (c != null) points.add(IntradayPricePoint(time = ts.toString(), price = c.toFloat()))
+                        }
+                        meta.toStock().copy(intradayPrices = points)
+                    }
                 }.getOrNull()
             }
         }.awaitAll().filterNotNull()
@@ -76,6 +103,20 @@ class StockRepositoryImpl @Inject constructor(
             } ?: emptyList()
         Resource.Success(news)
     }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch news") }
+
+    // Search endpoint — map quotes to lightweight domain model
+    override suspend fun searchSymbols(query: String): Resource<List<com.invest.easymoney.domain.model.StockSearchResult>> = runCatching {
+        val resp = api.searchNews(query, quotesCount = 10, newsCount = 0, enableFuzzyQuery = true)
+        val quotes = resp.quotes ?: emptyList()
+        val results = quotes.map { q ->
+            com.invest.easymoney.domain.model.StockSearchResult(
+                symbol = q.symbol,
+                name = if (q.longName.isNotEmpty()) q.longName else q.shortName.ifEmpty { q.symbol },
+                exchange = q.exchange
+            )
+        }
+        Resource.Success(results)
+    }.getOrElse { e -> Resource.Error(e.message ?: "Search failed") }
 
     // ── Watchlist ─────────────────────────────────────────────────────────────
 

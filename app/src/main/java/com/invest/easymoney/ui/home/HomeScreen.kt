@@ -97,6 +97,46 @@ fun HomeScreen(
                 }
             }
 
+            // Search bar
+            val searchQuery by viewModel.searchQuery.collectAsState()
+            val searchState by viewModel.searchState.collectAsState()
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Search symbol or name")
+                    },
+                    singleLine = true
+                )
+                Button(onClick = { viewModel.searchSymbols() }) { Text("Search") }
+            }
+
+            // Search results — show when user searched
+            when (searchState) {
+                is Resource.Loading -> {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { CircularProgressIndicator(modifier = Modifier.size(20.dp)) }
+                }
+                is Resource.Error -> {
+                    Text((searchState as Resource.Error).message ?: "Search error", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+                is Resource.Success -> {
+                    val results = (searchState as Resource.Success).data
+                    if (results.isNotEmpty()) {
+                        LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(results, key = { it.symbol }) { r ->
+                                Card(modifier = Modifier.fillMaxWidth().clickable { onStockClick(r.symbol) }, shape = RoundedCornerShape(8.dp)) {
+                                    Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Column { Text(r.symbol, fontWeight = FontWeight.Bold); Text(r.name, style = MaterialTheme.typography.bodySmall) }
+                                        Text(r.exchange, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             when (state) {
                 is Resource.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

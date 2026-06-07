@@ -1,7 +1,7 @@
 package com.invest.easymoney.data.api
 
 import com.invest.easymoney.data.api.dto.YahooChartResponseDto
-import com.invest.easymoney.data.api.dto.YahooSearchResponseDto
+import com.invest.easymoney.data.api.dto.YahooSearchResultDto
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -18,7 +18,7 @@ interface YahooFinanceApiService {
     suspend fun getChart(
         @Path("symbol") symbol: String,
         @Query("range") range: String = "1d",
-        @Query("interval") interval: String = "1d"
+        @Query("interval") interval: String = "1m"
     ): YahooChartResponseDto
 
     /**
@@ -31,5 +31,5 @@ interface YahooFinanceApiService {
         @Query("quotesCount") quotesCount: Int = 0,
         @Query("newsCount") newsCount: Int = 10,
         @Query("enableFuzzyQuery") enableFuzzyQuery: Boolean = false
-    ): YahooSearchResponseDto
+    ): YahooSearchResultDto
 }

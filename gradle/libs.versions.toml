@@ -22,6 +22,7 @@ coil = "2.7.0"
 firebaseBom = "33.7.0"
 workManager = "2.9.1"
 gson = "2.11.0"
+ui = "1.11.2"
 
 [libraries]
 # Core
@@ -83,6 +84,7 @@ work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version
 
 # Gson
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
