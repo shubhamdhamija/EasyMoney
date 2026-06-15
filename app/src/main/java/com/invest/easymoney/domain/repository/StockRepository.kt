@@ -14,6 +14,7 @@ interface StockRepository {
     suspend fun fetchStocksForSymbols(symbols: List<String>): Resource<List<Stock>>
     suspend fun searchSymbols(query: String): Resource<List<StockSearchResult>>
 
+    suspend fun getPopularStocksFromApi(): Resource<List<String>>
     // Watchlist
     fun getWatchlistSymbols(): Flow<List<String>>
     suspend fun addToWatchlist(symbol: String)

@@ -48,19 +48,15 @@ abstract class AiModule {
         @Provides
         @Singleton
         @OpenAiRetrofit
-        fun provideOpenAiRetrofit(@OpenAiClient client: OkHttpClient): Retrofit = Retrofit.Builder()
+        fun provideOpenAiRetrofit(@OpenAiClient client: OkHttpClient, gson: Gson): Retrofit = Retrofit.Builder()
             .baseUrl(Constants.OPENAI_BASE_URL)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
 
         @Provides
         @Singleton
         fun provideOpenAiApiService(@OpenAiRetrofit retrofit: Retrofit): OpenAiApiService =
             retrofit.create(OpenAiApiService::class.java)
-
-        @Provides
-        @Singleton
-        fun provideGson(): Gson = Gson()
     }
 }

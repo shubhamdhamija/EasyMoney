@@ -17,3 +17,12 @@ data class YahooQuoteDto(
     @SerializedName("exchange") val exchange: String = "",
     @SerializedName("quoteType") val quoteType: String = ""
 )
+
+
+data class YahooNewsDto(
+    @SerializedName(  "uuid") val uuid: String = "",
+    @SerializedName( "title") val title: String = "",
+    @SerializedName( "publisher") val publisher: String = "",
+@SerializedName("link") val link: String = "",
+@SerializedName("providerPublishTime") val publishTime: Long = 0L
+)

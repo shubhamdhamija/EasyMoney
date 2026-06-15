@@ -8,9 +8,11 @@ val RoyalBlue = Color(0xFF1565C0)
 val LightBlue = Color(0xFF42A5F5)
 
 // Financial
-val GainGreen = Color(0xFF2E7D32)
 val GainGreenLight = Color(0xFF43A047)
-val LossRed = Color(0xFFC62828)
+
+
+val GainGreen = Color(0xFF16C784)
+val LossRed = Color(0xFFEA3943)
 val LossRedLight = Color(0xFFE53935)
 
 // Neutral

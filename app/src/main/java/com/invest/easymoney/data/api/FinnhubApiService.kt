@@ -32,4 +32,14 @@ interface YahooFinanceApiService {
         @Query("newsCount") newsCount: Int = 10,
         @Query("enableFuzzyQuery") enableFuzzyQuery: Boolean = false
     ): YahooSearchResultDto
-}
+
+    @GET("v1/finance/search")
+    suspend fun searchSymbols(
+        @Query("q") query: String = "stocks",
+        @Query("quotesCount") quotesCount: Int = 100,
+        @Query("newsCount") newsCount: Int = 0,
+        @Query("enableFuzzyQuery") enableFuzzyQuery: Boolean = true
+    ): YahooSearchResultDto
+
+
+    }

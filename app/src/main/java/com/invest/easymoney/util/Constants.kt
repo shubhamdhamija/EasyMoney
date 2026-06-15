@@ -35,6 +35,9 @@ object Constants {
         "WMT", "DIS", "SPOT", "UBER", "PYPL"
     )
 
+    const val IEX_BASE_URL = "https://cloud.iexapis.com/stable/"
+    const val IEX_API_TOKEN = "YOUR_IEX_TOKEN"
+
     val TRENDING_STOCKS = listOf("NVDA", "TSLA", "AAPL", "AMZN", "META")
 
     const val NOTIFICATION_CHANNEL_ID = "stock_alerts_channel"

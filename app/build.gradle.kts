@@ -52,9 +52,12 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.animation.core)
+    implementation(libs.androidx.compose.foundation)
     // Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.ui)
 
     // Compose

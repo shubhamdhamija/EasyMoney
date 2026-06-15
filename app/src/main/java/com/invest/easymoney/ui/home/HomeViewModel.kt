@@ -56,6 +56,9 @@ class HomeViewModel @Inject constructor(
     private val _searchState = MutableStateFlow<Resource<List<com.invest.easymoney.domain.model.StockSearchResult>>>(Resource.Success(emptyList()))
     val searchState = _searchState
 
+    private val _popularSymbols = MutableStateFlow<List<String>>(emptyList())
+    val popularSymbols: StateFlow<List<String>> = _popularSymbols
+
     init {
         loadStocks()
     }
@@ -95,6 +98,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _searchState.value = Resource.Loading
             _searchState.value = repository.searchSymbols(q)
+        }
+    }
+
+    fun loadPopularSymbols() {
+        viewModelScope.launch {
+            when (val result = repository.getPopularStocksFromApi()) {
+                is Resource.Success -> _popularSymbols.value = result.data ?: emptyList()
+                else -> _popularSymbols.value = Constants.POPULAR_STOCKS
+            }
         }
     }
 }

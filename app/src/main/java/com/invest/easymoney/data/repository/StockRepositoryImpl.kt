@@ -21,9 +21,11 @@ import javax.inject.Singleton
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import com.invest.easymoney.data.api.IexApiService
 
 @Singleton
 class StockRepositoryImpl @Inject constructor(
+    private val iexApi: IexApiService,
     private val api: YahooFinanceApiService,
     private val watchlistDao: WatchlistDao,
     private val alertDao: AlertDao
@@ -31,11 +33,7 @@ class StockRepositoryImpl @Inject constructor(
 
     // ── Stocks ────────────────────────────────────────────────────────────────
 
-    override suspend fun getTopStocks(): Resource<List<Stock>> = runCatching {
-        val stocks = fetchCharts(Constants.POPULAR_STOCKS)
-            .filter { it.currentPrice > 0 }
-        Resource.Success(stocks)
-    }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch stocks") }
+
 
     override suspend fun getStockDetail(symbol: String): Resource<Stock> = runCatching {
         val result = api.getChart(symbol).chart?.result?.firstOrNull()
@@ -68,7 +66,7 @@ class StockRepositoryImpl @Inject constructor(
         symbols.map { symbol ->
             async {
                 runCatching {
-                    api.getChart(symbol).chart?.result?.firstOrNull()?.let { res ->
+                        api.getChart(symbol).chart?.result?.firstOrNull()?.let { res ->
                         val meta = res.meta
                         val timestamps = res.timestamp ?: emptyList()
                         val closes = res.indicators?.quote?.firstOrNull()?.close ?: emptyList()
@@ -85,6 +83,20 @@ class StockRepositoryImpl @Inject constructor(
             }
         }.awaitAll().filterNotNull()
     }
+
+    override suspend fun getTopStocks(): Resource<List<Stock>> = runCatching {
+        val popularSymbols = when (val result = getPopularStocksFromApi()) {
+            is Resource.Success -> result.data ?: emptyList()
+            is Resource.Error -> Constants.POPULAR_STOCKS
+            is Resource.Loading -> emptyList()
+        }
+
+        val stocks = fetchCharts(popularSymbols)
+            .filter { it.currentPrice > 0 }
+
+        Resource.Success(stocks)
+    }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch stocks") }
+
 
     override suspend fun getNews(symbol: String): Resource<List<News>> = runCatching {
         val response = api.searchNews(symbol)
@@ -173,4 +185,14 @@ class StockRepositoryImpl @Inject constructor(
         percentage = percentage,
         type = if (type == "INCREASE") AlertType.INCREASE else AlertType.DECREASE
     )
-}
+
+
+    override suspend fun getPopularStocksFromApi(): Resource<List<String>> = try {
+        val response = iexApi.getMostActiveStocks(Constants.IEX_API_TOKEN)
+        val symbols = response.mapNotNull { it.symbol.trim().ifEmpty { null } }.distinct().take(30)
+        if (symbols.isNotEmpty()) Resource.Success(symbols)
+        else Resource.Error("No symbols from IEX")
+    } catch (e: Exception) {
+        Resource.Success(Constants.POPULAR_STOCKS)
+    }
+    }
