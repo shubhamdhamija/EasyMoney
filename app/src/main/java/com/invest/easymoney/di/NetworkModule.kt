@@ -2,6 +2,7 @@ package com.invest.easymoney.di
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.invest.easymoney.data.api.BackendApiService
 import com.invest.easymoney.data.api.IexApiService
 import com.invest.easymoney.data.api.YahooFinanceApiService
 import com.invest.easymoney.util.Constants
@@ -24,6 +25,10 @@ annotation class YahooRetrofit
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class IexRetrofit
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class BackendRetrofit
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -77,6 +82,20 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @BackendRetrofit
+    fun provideBackendRetrofit(
+        okHttpClient: OkHttpClient,
+        gson: Gson
+    ): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(Constants.BACKEND_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
     fun provideYahooFinanceApiService(
         @YahooRetrofit retrofit: Retrofit
     ): YahooFinanceApiService {
@@ -90,4 +109,14 @@ object NetworkModule {
     ): IexApiService {
         return retrofit.create(IexApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideBackendApiService(
+        @BackendRetrofit retrofit: Retrofit
+    ): BackendApiService {
+        return retrofit.create(BackendApiService::class.java)
+    }
 }
+
+

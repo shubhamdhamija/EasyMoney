@@ -96,6 +96,7 @@ dependencies {
     ksp(libs.room.compiler)
 
     // Coroutines
+    implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
 
     // Coil
@@ -125,13 +126,7 @@ dependencies {
     implementation("com.patrykandpatrick.vico:compose:1.16.1")
     implementation("com.patrykandpatrick.vico:compose-m3:1.16.1")
     implementation("com.patrykandpatrick.vico:core:1.16.1")
-
-
-
-
-
-
-
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
 
 }
