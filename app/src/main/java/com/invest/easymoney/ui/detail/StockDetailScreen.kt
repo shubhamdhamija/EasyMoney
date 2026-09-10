@@ -103,7 +103,9 @@ fun StockDetailScreen(
     var webViewUrl by remember { mutableStateOf<String?>(null) }
     var selectedSection by remember { mutableStateOf(PremiumSection.OVERVIEW) }
 
-    webViewUrl?.let { url -> WebViewBottomSheet(url = url, onDismiss = { webViewUrl = null }) }
+    if (webViewUrl != null) {
+        WebViewBottomSheet(url = webViewUrl!!, onDismiss = { webViewUrl = null })
+    }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {

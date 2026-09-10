@@ -1,5 +1,6 @@
 package com.invest.easymoney.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.invest.easymoney.domain.model.AiPick
@@ -17,6 +18,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "HomeViewModel"
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -65,8 +68,21 @@ class HomeViewModel @Inject constructor(
 
     fun loadStocks() {
         viewModelScope.launch {
+            Log.d(TAG, "Loading stocks...")
             _topStocksState.value = Resource.Loading
-            _topStocksState.value = repository.getTopStocks()
+            val result = repository.getTopStocks()
+            _topStocksState.value = result
+            when (result) {
+                is Resource.Success -> {
+                    Log.d(TAG, "Stocks loaded: ${result.data?.size} stocks")
+                }
+                is Resource.Error -> {
+                    Log.e(TAG, "Failed to load stocks: ${result.message}")
+                }
+                is Resource.Loading -> {
+                    Log.d(TAG, "Stocks loading...")
+                }
+            }
         }
     }
 

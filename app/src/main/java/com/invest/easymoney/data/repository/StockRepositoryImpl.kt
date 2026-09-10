@@ -85,20 +85,39 @@ class StockRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getTopStocks(): Resource<List<Stock>> = runCatching {
+        Log.d("StockRepo", "Starting getTopStocks()...")
         val popularSymbols = when (val result = getPopularStocksFromApi()) {
-            is Resource.Success -> result.data ?: emptyList()
-            is Resource.Error -> Constants.POPULAR_STOCKS
+            is Resource.Success -> {
+                Log.d("StockRepo", "Got popular symbols: ${result.data?.size}")
+                result.data ?: emptyList()
+            }
+            is Resource.Error -> {
+                Log.w("StockRepo", "Error fetching popular symbols: ${result.message}, using defaults")
+                Constants.POPULAR_STOCKS
+            }
             is Resource.Loading -> emptyList()
         }
 
         val stocks = fetchCharts(popularSymbols)
             .filter { it.currentPrice > 0 }
 
-        Resource.Success(stocks)
-    }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch stocks") }
+        Log.d("StockRepo", "Loaded ${stocks.size} stocks with prices")
+        if (stocks.isNotEmpty()) {
+            Resource.Success(stocks)
+        } else {
+            Log.w("StockRepo", "No stocks loaded, falling back to mock data")
+            Resource.Success(Constants.MOCK_STOCKS)
+        }
+    }.getOrElse { e ->
+        Log.e("StockRepo", "Error in getTopStocks: ${e.message}", e)
+        // Fallback to mock data on any error
+        Log.i("StockRepo", "Returning mock data as fallback")
+        Resource.Success(Constants.MOCK_STOCKS)
+    }
 
 
     override suspend fun getNews(symbol: String): Resource<List<News>> = runCatching {
+        Log.d("StockRepo", "Fetching news for $symbol...")
         val response = api.searchNews(symbol)
         val news = response.news
             ?.filter { it.title.isNotEmpty() }
@@ -113,8 +132,13 @@ class StockRepositoryImpl @Inject constructor(
                     datetime = dto.publishTime
                 )
             } ?: emptyList()
+        Log.d("StockRepo", "Got ${news.size} news items for $symbol")
         Resource.Success(news)
-    }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch news") }
+    }.getOrElse { e ->
+        Log.w("StockRepo", "Error fetching news for $symbol: ${e.message}")
+        // Return empty news list on error instead of error state
+        Resource.Success(emptyList())
+    }
 
     // Search endpoint — map quotes to lightweight domain model
     override suspend fun searchSymbols(query: String): Resource<List<com.invest.easymoney.domain.model.StockSearchResult>> = runCatching {
@@ -188,11 +212,18 @@ class StockRepositoryImpl @Inject constructor(
 
 
     override suspend fun getPopularStocksFromApi(): Resource<List<String>> = try {
+        Log.d("StockRepo", "Fetching popular stocks from IEX...")
         val response = iexApi.getMostActiveStocks(Constants.IEX_API_TOKEN)
         val symbols = response.mapNotNull { it.symbol.trim().ifEmpty { null } }.distinct().take(30)
-        if (symbols.isNotEmpty()) Resource.Success(symbols)
-        else Resource.Error("No symbols from IEX")
+        if (symbols.isNotEmpty()) {
+            Log.d("StockRepo", "Got ${symbols.size} popular symbols from IEX")
+            Resource.Success(symbols)
+        } else {
+            Log.w("StockRepo", "IEX returned empty symbols, using defaults")
+            Resource.Success(Constants.POPULAR_STOCKS)
+        }
     } catch (e: Exception) {
+        Log.w("StockRepo", "Failed to fetch from IEX: ${e.message}, using defaults", e)
         Resource.Success(Constants.POPULAR_STOCKS)
     }
     }
