@@ -8,6 +8,7 @@ import com.invest.easymoney.data.local.entity.AlertEntity
 import com.invest.easymoney.data.local.entity.WatchlistEntity
 import com.invest.easymoney.domain.model.Alert
 import com.invest.easymoney.domain.model.AlertType
+import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.IntradayPricePoint
@@ -35,9 +36,9 @@ class StockRepositoryImpl @Inject constructor(
 
 
 
-    override suspend fun getStockDetail(symbol: String): Resource<Stock> = runCatching {
+    override suspend fun getStockDetail(symbol: String): NetworkResult<Stock> = runCatching {
         val result = api.getChart(symbol).chart?.result?.firstOrNull()
-            ?: return Resource.Error("No data for $symbol")
+            ?: return NetworkResult.Error(IllegalStateException("No data for $symbol"))
         val meta = result.meta
         // Build intraday points from timestamps + indicators
         val timestamps = result.timestamp ?: emptyList()
@@ -51,8 +52,8 @@ class StockRepositoryImpl @Inject constructor(
         }
         Log.d("StockRepository", "getStockDetail: $symbol -> points=${points.size}, timestamps=${timestamps.size}, closes=${closes.size}")
         val stock = meta.toStock().copy(intradayPrices = points)
-        Resource.Success(stock)
-    }.getOrElse { e -> Resource.Error(e.message ?: "Failed to fetch $symbol") }
+        NetworkResult.Success(stock)
+    }.getOrElse { e -> NetworkResult.Error(e) }
 
     override suspend fun fetchStocksForSymbols(symbols: List<String>): Resource<List<Stock>> {
         if (symbols.isEmpty()) return Resource.Success(emptyList())
@@ -116,7 +117,7 @@ class StockRepositoryImpl @Inject constructor(
     }
 
 
-    override suspend fun getNews(symbol: String): Resource<List<News>> = runCatching {
+    override suspend fun getNews(symbol: String): NetworkResult<List<News>> = runCatching {
         Log.d("StockRepo", "Fetching news for $symbol...")
         val response = api.searchNews(symbol)
         val news = response.news
@@ -133,11 +134,10 @@ class StockRepositoryImpl @Inject constructor(
                 )
             } ?: emptyList()
         Log.d("StockRepo", "Got ${news.size} news items for $symbol")
-        Resource.Success(news)
+        NetworkResult.Success(news)
     }.getOrElse { e ->
         Log.w("StockRepo", "Error fetching news for $symbol: ${e.message}")
-        // Return empty news list on error instead of error state
-        Resource.Success(emptyList())
+        NetworkResult.Error(e)
     }
 
     // Search endpoint — map quotes to lightweight domain model

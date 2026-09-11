@@ -1,6 +1,7 @@
 package com.invest.easymoney.domain.repository
 
 import com.invest.easymoney.domain.model.AiPick
+import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
@@ -16,7 +17,7 @@ interface AiInsightRepository {
         symbol: String,
         stock: Stock,
         news: List<News>
-    ): Resource<StockInsight>
+    ): NetworkResult<StockInsight>
 
     /**
      * Ranks the given stocks and returns the top AI picks of the day.

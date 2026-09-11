@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.invest.easymoney.domain.model.AlertType
+import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
@@ -49,7 +50,6 @@ import com.invest.easymoney.ui.theme.LossRed
 import com.invest.easymoney.ui.theme.TradingShapes
 import com.invest.easymoney.ui.theme.TradingTextStyles
 import com.invest.easymoney.ui.webview.WebViewBottomSheet
-import com.invest.easymoney.util.Resource
 import java.util.Locale
 
 private enum class PremiumSection(val label: String) {
@@ -95,6 +95,9 @@ fun StockDetailScreen(
     val newsState by viewModel.newsState.collectAsStateWithLifecycle()
     val insightState by viewModel.insightState.collectAsStateWithLifecycle()
     val explainState by viewModel.explainState.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isInsightLoading by viewModel.isInsightLoading.collectAsStateWithLifecycle()
+    val isExplainLoading by viewModel.isExplainLoading.collectAsStateWithLifecycle()
     val isInWatchlist by viewModel.isInWatchlist.collectAsStateWithLifecycle()
     val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
 
@@ -165,21 +168,23 @@ fun StockDetailScreen(
             )
         }
     ) { padding ->
-        when (stockState) {
-            is Resource.Loading -> PremiumShimmerLoadingState(modifier = Modifier.fillMaxSize().padding(padding))
-            is Resource.Error -> PremiumErrorState(
-                message = (stockState as Resource.Error).message,
-                onRetry = { viewModel.loadDetail() },
-                modifier = Modifier.fillMaxSize().padding(padding)
-            )
-            is Resource.Success -> {
-                val stock = (stockState as Resource.Success<Stock>).data
-                val news = (newsState as? Resource.Success)?.data ?: emptyList()
-                val prices = stock.intradayPrices.map { it.price }
-                val timesList = stock.intradayPrices.mapNotNull { it.time.toLongOrNull() }
-                val timesForChart = if (timesList.size == prices.size) timesList else null
-                val analystRatingUi = buildAnalystRatingUi(stock)
-                val financialRatiosUi = buildFinancialRatiosUi(stock)
+        if (isLoading) {
+            PremiumShimmerLoadingState(modifier = Modifier.fillMaxSize().padding(padding))
+        } else {
+            when (val result = stockState) {
+                is NetworkResult.Error -> PremiumErrorState(
+                    message = result.throwable.message ?: "Unable to load stock",
+                    onRetry = { viewModel.loadDetail() },
+                    modifier = Modifier.fillMaxSize().padding(padding)
+                )
+                is NetworkResult.Success -> {
+                    val stock = result.data
+                    val news = (newsState as? NetworkResult.Success)?.data ?: emptyList()
+                    val prices = stock.intradayPrices.map { it.price }
+                    val timesList = stock.intradayPrices.mapNotNull { it.time.toLongOrNull() }
+                    val timesForChart = if (timesList.size == prices.size) timesList else null
+                    val analystRatingUi = buildAnalystRatingUi(stock)
+                    val financialRatiosUi = buildFinancialRatiosUi(stock)
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
@@ -199,7 +204,8 @@ fun StockDetailScreen(
                         PremiumChartContainer(
                             prices = prices,
                             timesForChart = timesForChart,
-                            insightState = insightState
+                            insightState = insightState,
+                            isLoading = isInsightLoading
                         )
                     }
                     stickyHeader {
@@ -224,11 +230,12 @@ fun StockDetailScreen(
                             }
                         }
                         PremiumSection.AI -> {
-                            item { AiSentimentMeter(insightState = insightState) }
-                            item { AiInsightCard(insightState = insightState, onRetry = { viewModel.loadDetail() }) }
+                            item { AiSentimentMeter(insightState = insightState, isLoading = isInsightLoading) }
+                            item { AiInsightCard(insightState = insightState, isLoading = isInsightLoading, onRetry = { viewModel.loadDetail() }) }
                             item {
                                 ExplainMoveCard(
                                     state = explainState,
+                                    isLoading = isExplainLoading,
                                     onExplain = { viewModel.explainMove() },
                                     onDismiss = { viewModel.dismissExplain() }
                                 )
@@ -246,6 +253,8 @@ fun StockDetailScreen(
                         }
                     }
                 }
+                }
+                null -> PremiumShimmerLoadingState(modifier = Modifier.fillMaxSize().padding(padding))
             }
         }
     }
@@ -336,10 +345,12 @@ private fun PremiumHeroCard(
 private fun PremiumChartContainer(
     prices: List<Float>,
     timesForChart: List<Long>?,
-    insightState: Resource<StockInsight>
+    insightState: NetworkResult<StockInsight>?,
+    isLoading: Boolean
 ) {
-    val sentiment = (insightState as? Resource.Success)?.data?.sentiment?.lowercase()
+    val sentiment = (insightState as? NetworkResult.Success)?.data?.sentiment?.lowercase()
     val sentimentText = when (sentiment) {
+        null -> if (isLoading) "AI is analyzing sentiment" else "AI sentiment unavailable or neutral"
         "bullish" -> "AI sees bullish momentum"
         "bearish" -> "AI sees caution in trend"
         else -> "AI sentiment unavailable or neutral"
@@ -770,7 +781,7 @@ private fun ProfileRow(label: String, value: String) {
 }
 
 @Composable
-private fun AiSentimentMeter(insightState: Resource<StockInsight>) {
+private fun AiSentimentMeter(insightState: NetworkResult<StockInsight>?, isLoading: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = TradingShapes.Card,
@@ -783,8 +794,8 @@ private fun AiSentimentMeter(insightState: Resource<StockInsight>) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("AI Sentiment Meter", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
-            when (insightState) {
-                is Resource.Success -> {
+            when {
+                insightState is NetworkResult.Success -> {
                     val sentiment = insightState.data.sentiment.lowercase()
                     val score = when (sentiment) {
                         "bullish" -> 0.82f
@@ -807,12 +818,15 @@ private fun AiSentimentMeter(insightState: Resource<StockInsight>) {
                         Text("Bullish", style = TradingTextStyles.StatLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                is Resource.Loading -> {
+                isLoading -> {
                     Text("Scanning signals and estimating sentiment...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
-                is Resource.Error -> {
+                insightState is NetworkResult.Error -> {
                     Text("Unable to load AI sentiment at the moment.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                }
+                else -> {
+                    Text("Sentiment unavailable.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -820,7 +834,7 @@ private fun AiSentimentMeter(insightState: Resource<StockInsight>) {
 }
 
 @Composable
-private fun AiInsightCard(insightState: Resource<StockInsight>, onRetry: () -> Unit) {
+private fun AiInsightCard(insightState: NetworkResult<StockInsight>?, isLoading: Boolean, onRetry: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = TradingShapes.Card,
@@ -832,20 +846,20 @@ private fun AiInsightCard(insightState: Resource<StockInsight>, onRetry: () -> U
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("AI Insight", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
             }
-            when (insightState) {
-                is Resource.Loading -> {
+            when {
+                isLoading -> {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Text("Analyzing market data...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     }
                 }
-                is Resource.Error -> {
-                    Text("⚠️ ${insightState.message}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                insightState is NetworkResult.Error -> {
+                    Text("⚠️ ${insightState.throwable.message ?: "Unable to load insight"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = onRetry, contentPadding = PaddingValues(0.dp)) {
                         Text("Retry", style = MaterialTheme.typography.labelSmall)
                     }
                 }
-                is Resource.Success -> {
+                insightState is NetworkResult.Success -> {
                     val insight = insightState.data
                     SentimentBadge(insight.sentiment)
                     Text(insight.insight, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -857,6 +871,9 @@ private fun AiInsightCard(insightState: Resource<StockInsight>, onRetry: () -> U
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f)
                     )
+                }
+                else -> {
+                    Text("Insight unavailable.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 }
             }
         }
@@ -1028,7 +1045,7 @@ private fun SetPriceAlertDialog(onDismissDialog: () -> Unit, onConfirm: (Float, 
 }
 
 @Composable
-private fun ExplainMoveCard(state: Resource<String>?, onExplain: () -> Unit, onDismiss: () -> Unit) {
+private fun ExplainMoveCard(state: NetworkResult<String>?, isLoading: Boolean, onExplain: () -> Unit, onDismiss: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth(), shape = TradingShapes.Card, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -1037,7 +1054,7 @@ private fun ExplainMoveCard(state: Resource<String>?, onExplain: () -> Unit, onD
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Why did it move?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
                 }
-                if (state != null && state !is Resource.Loading) {
+                if (state != null && !isLoading) {
                     TextButton(onClick = onDismiss, contentPadding = PaddingValues(0.dp)) { Text("Clear", style = MaterialTheme.typography.labelSmall) }
                 }
             }
@@ -1054,23 +1071,23 @@ private fun ExplainMoveCard(state: Resource<String>?, onExplain: () -> Unit, onD
                         Text("Explain This Move")
                     }
                 }
-                is Resource.Loading -> {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text("Retrieving context and generating explanation...", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                is Resource.Error -> {
-                    Text("⚠️ ${state.message}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                is NetworkResult.Error -> {
+                    Text("⚠️ ${state.throwable.message ?: "Unable to explain move"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = onExplain, contentPadding = PaddingValues(0.dp)) { Text("Retry", style = MaterialTheme.typography.labelSmall) }
                 }
-                is Resource.Success -> {
+                is NetworkResult.Success -> {
                     Text(state.data, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
                     Text(
                         "⚠️ AI-generated. Not financial advice.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.65f)
                     )
+                }
+            }
+            if (isLoading) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text("Retrieving context and generating explanation...", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
