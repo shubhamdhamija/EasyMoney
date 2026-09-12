@@ -28,6 +28,7 @@ import com.invest.easymoney.ui.theme.LossRed
 import com.invest.easymoney.util.Resource
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,7 +122,7 @@ private fun WatchlistTab(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(stocks, key = { it.symbol }) { stock ->
@@ -234,7 +235,7 @@ private fun WatchlistItem(stock: Stock, onClick: () -> Unit, onRemove: () -> Uni
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = "${if (isPositive) "+" else ""}${String.format("%.2f", stock.changePercent)}%",
+                            text = formatSignedMove(stock.change, stock.changePercent),
                             style = MaterialTheme.typography.bodySmall,
                             color = changeColor,
                             fontWeight = FontWeight.Medium
@@ -267,7 +268,7 @@ private fun EarningsTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (upcoming.isNotEmpty()) {
@@ -608,3 +609,11 @@ private fun formatDate(dateStr: String): String {
         dateStr
     }
 }
+
+private fun formatSignedMove(change: Double, changePercent: Double): String {
+    val sign = if (change >= 0) "+" else "-"
+    val amount = String.format(Locale.US, "%.2f", change.absoluteValue)
+    val percent = String.format(Locale.US, "%.2f", changePercent.absoluteValue)
+    return "$sign $$amount ($sign$percent%)"
+}
+

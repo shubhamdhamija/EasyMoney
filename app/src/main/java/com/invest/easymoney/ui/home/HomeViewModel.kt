@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.invest.easymoney.domain.model.AiPick
 import com.invest.easymoney.domain.model.Stock
+import com.invest.easymoney.domain.model.StockSearchResult
 import com.invest.easymoney.domain.repository.AiInsightRepository
 import com.invest.easymoney.domain.repository.StockRepository
 import com.invest.easymoney.util.Constants
@@ -14,12 +15,27 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val TAG = "HomeViewModel"
+
+data class SearchUiState(
+    val query: String = "",
+    val isLoading: Boolean = false,
+    val results: List<StockSearchResult> = emptyList(),
+    val error: String? = null
+)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -53,17 +69,57 @@ class HomeViewModel @Inject constructor(
     private var aiPicksJob: Job? = null
 
     // Search state
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery = _searchQuery
+    private val _searchUiState = MutableStateFlow(SearchUiState())
+    val searchUiState: StateFlow<SearchUiState> = _searchUiState
 
-    private val _searchState = MutableStateFlow<Resource<List<com.invest.easymoney.domain.model.StockSearchResult>>>(Resource.Success(emptyList()))
-    val searchState = _searchState
+    private val searchQuery = MutableStateFlow("")
+
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+    private val searchResults: Flow<Resource<List<StockSearchResult>>> = searchQuery
+        .debounce(500.milliseconds)
+        .map(String::trim)
+        .distinctUntilChanged()
+        .flatMapLatest { query ->
+            if (query.isBlank()) {
+                flowOf(Resource.Success(emptyList<StockSearchResult>()))
+            } else {
+                repository.searchSymbols(query)
+            }
+        }
 
     private val _popularSymbols = MutableStateFlow<List<String>>(emptyList())
     val popularSymbols: StateFlow<List<String>> = _popularSymbols
 
     init {
         loadStocks()
+        viewModelScope.launch {
+            searchResults.collect(::updateSearchUi)
+        }
+    }
+
+    private fun updateSearchUi(result: Resource<List<StockSearchResult>>) {
+        _searchUiState.value = when (result) {
+            is Resource.Loading ->
+                _searchUiState.value.copy(
+                    isLoading = true,
+                    results = emptyList(),
+                    error = null
+                )
+
+            is Resource.Success ->
+                _searchUiState.value.copy(
+                    results = result.data,
+                    isLoading = false,
+                    error = null
+                )
+
+            is Resource.Error ->
+                _searchUiState.value.copy(
+                    isLoading = false,
+                    results = emptyList(),
+                    error = result.message
+                )
+        }
     }
 
     fun loadStocks() {
@@ -105,24 +161,8 @@ class HomeViewModel @Inject constructor(
     }
 
     fun setSearchQuery(q: String) {
-        _searchQuery.value = q
+        _searchUiState.value = _searchUiState.value.copy(query = q, error = null)
+        searchQuery.value = q
     }
 
-    fun searchSymbols() {
-        val q = _searchQuery.value.trim()
-        if (q.isEmpty()) return
-        viewModelScope.launch {
-            _searchState.value = Resource.Loading
-            _searchState.value = repository.searchSymbols(q)
-        }
-    }
-
-    fun loadPopularSymbols() {
-        viewModelScope.launch {
-            when (val result = repository.getPopularStocksFromApi()) {
-                is Resource.Success -> _popularSymbols.value = result.data ?: emptyList()
-                else -> _popularSymbols.value = Constants.POPULAR_STOCKS
-            }
-        }
-    }
 }

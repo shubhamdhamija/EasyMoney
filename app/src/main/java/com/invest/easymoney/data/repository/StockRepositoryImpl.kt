@@ -11,11 +11,13 @@ import com.invest.easymoney.domain.model.AlertType
 import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
+import com.invest.easymoney.domain.model.StockSearchResult
 import com.invest.easymoney.domain.model.IntradayPricePoint
 import com.invest.easymoney.domain.repository.StockRepository
 import com.invest.easymoney.util.Constants
 import com.invest.easymoney.util.Resource
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -141,18 +143,22 @@ class StockRepositoryImpl @Inject constructor(
     }
 
     // Search endpoint — map quotes to lightweight domain model
-    override suspend fun searchSymbols(query: String): Resource<List<com.invest.easymoney.domain.model.StockSearchResult>> = runCatching {
-        val resp = api.searchNews(query, quotesCount = 10, newsCount = 0, enableFuzzyQuery = true)
-        val quotes = resp.quotes ?: emptyList()
-        val results = quotes.map { q ->
-            com.invest.easymoney.domain.model.StockSearchResult(
-                symbol = q.symbol,
-                name = if (q.longName.isNotEmpty()) q.longName else q.shortName.ifEmpty { q.symbol },
-                exchange = q.exchange
-            )
-        }
-        Resource.Success(results)
-    }.getOrElse { e -> Resource.Error(e.message ?: "Search failed") }
+    override fun searchSymbols(query: String): Flow<Resource<List<StockSearchResult>>> = flow {
+        emit(Resource.Loading)
+        val result = runCatching {
+            val resp = api.searchNews(query, quotesCount = 10, newsCount = 0, enableFuzzyQuery = true)
+            val quotes = resp.quotes ?: emptyList()
+            val results = quotes.map { q ->
+                StockSearchResult(
+                    symbol = q.symbol,
+                    name = if (q.longName.isNotEmpty()) q.longName else q.shortName.ifEmpty { q.symbol },
+                    exchange = q.exchange
+                )
+            }
+            Resource.Success(results)
+        }.getOrElse { e -> Resource.Error(e.message ?: "Search failed") }
+        emit(result)
+    }
 
     // ── Watchlist ─────────────────────────────────────────────────────────────
 

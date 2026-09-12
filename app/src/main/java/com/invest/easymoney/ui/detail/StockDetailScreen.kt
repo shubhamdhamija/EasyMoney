@@ -51,6 +51,7 @@ import com.invest.easymoney.ui.theme.TradingShapes
 import com.invest.easymoney.ui.theme.TradingTextStyles
 import com.invest.easymoney.ui.webview.WebViewBottomSheet
 import java.util.Locale
+import kotlin.math.absoluteValue
 
 private enum class PremiumSection(val label: String) {
     OVERVIEW("Overview"),
@@ -131,7 +132,7 @@ fun StockDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = {
                     Column {
                         Text(viewModel.symbol, style = TradingTextStyles.Ticker, fontWeight = FontWeight.Bold)
@@ -159,7 +160,7 @@ fun StockDetailScreen(
                         Icon(Icons.Default.Notifications, contentDescription = "Set Alert")
                     }
                 },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -188,7 +189,7 @@ fun StockDetailScreen(
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 20.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
@@ -293,7 +294,7 @@ private fun PremiumHeroCard(
                         Icon(arrowIcon, contentDescription = null, tint = trendColor, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "${if (isPositive) "+" else ""}${String.format("%.2f", stock.change)} • ${if (isPositive) "+" else ""}${String.format("%.2f", stock.changePercent)}%",
+                            text = "${if (isPositive) "+" else "-"} $${String.format(Locale.US, "%.2f", stock.change.absoluteValue)} (${if (isPositive) "+" else "-"}${String.format(Locale.US, "%.2f", stock.changePercent.absoluteValue)}%)",
                             style = TradingTextStyles.PriceChange,
                             color = trendColor,
                             fontWeight = FontWeight.SemiBold

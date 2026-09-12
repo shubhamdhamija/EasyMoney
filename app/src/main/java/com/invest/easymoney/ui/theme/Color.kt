@@ -11,8 +11,8 @@ val LightBlue = Color(0xFF42A5F5)
 val GainGreenLight = Color(0xFF43A047)
 
 
-val GainGreen = Color(0xFF16C784)
-val LossRed = Color(0xFFEA3943)
+val GainGreen = Color(0xFF22C55E)
+val LossRed = Color(0xFFEF4444)
 val LossRedLight = Color(0xFFE53935)
 
 // Neutral
