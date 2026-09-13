@@ -18,50 +18,49 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Brand / accent
-private val Emerald = Color(0xFF00C896)
-private val EmeraldDark = Color(0xFF00A67E)
-private val ElectricBlue = Color(0xFF4C8DFF)
-private val PremiumGold = Color(0xFFFFC857)
+// Brand / accent (Option 1: Pro Trading)
+private val SlateNavy = Color(0xFF0F172A)
+private val VividBlue = Color(0xFF2563EB)
+private val CyanAccent = Color(0xFF06B6D4)
 
 // Semantic trading colors
-private val WarningAmber = Color(0xFFF5B700)
+private val WarningAmber = Color(0xFFF59E0B)
 
 // Neutral surfaces (light)
-private val LightBackground = Color(0xFFF6F8FB)
+private val LightBackground = Color(0xFFF8FAFC)
 private val LightSurface = Color(0xFFFFFFFF)
-private val LightSurfaceVariant = Color(0xFFEFF3F8)
-private val LightTextPrimary = Color(0xFF111827)
-private val LightTextSecondary = Color(0xFF6B7280)
-private val LightOutline = Color(0xFFD0D7E2)
+private val LightSurfaceVariant = Color(0xFFF1F5F9)
+private val LightTextPrimary = Color(0xFF0F172A)
+private val LightTextSecondary = Color(0xFF475569)
+private val LightOutline = Color(0xFFCBD5E1)
 private val LightOutlineVariant = Color(0xFFE2E8F0)
 
 // Neutral surfaces (dark)
-private val DarkBackground = Color(0xFF0B1020)
+private val DarkBackground = Color(0xFF020617)
 private val DarkSurface = Color(0xFF111827)
-private val DarkSurfaceVariant = Color(0xFF162033)
+private val DarkSurfaceVariant = Color(0xFF1E293B)
 private val DarkTextPrimary = Color(0xFFF8FAFC)
 private val DarkTextSecondary = Color(0xFF94A3B8)
 private val DarkOutline = Color(0xFF334155)
-private val DarkOutlineVariant = Color(0xFF243244)
+private val DarkOutlineVariant = Color(0xFF1E293B)
 
 // Error colors
 private val ErrorLight = Color(0xFFD92D20)
 private val ErrorDark = Color(0xFFFF6B6B)
 
 private val EasyMoneyLightColorScheme = lightColorScheme(
-    primary = Emerald,
+    primary = SlateNavy,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFD7FFF0),
-    onPrimaryContainer = Color(0xFF003829),
-    secondary = ElectricBlue,
+    primaryContainer = Color(0xFFE2E8F0),
+    onPrimaryContainer = Color(0xFF020617),
+    secondary = VividBlue,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFDCE8FF),
-    onSecondaryContainer = Color(0xFF0A2A66),
-    tertiary = PremiumGold,
-    onTertiary = Color(0xFF3F2A00),
-    tertiaryContainer = Color(0xFFFFEAB5),
-    onTertiaryContainer = Color(0xFF5A3D00),
+    secondaryContainer = Color(0xFFDBEAFE),
+    onSecondaryContainer = Color(0xFF1E3A8A),
+    tertiary = CyanAccent,
+    onTertiary = Color(0xFF083344),
+    tertiaryContainer = Color(0xFFCFFAFE),
+    onTertiaryContainer = Color(0xFF164E63),
     background = LightBackground,
     onBackground = LightTextPrimary,
     surface = LightSurface,
@@ -76,24 +75,24 @@ private val EasyMoneyLightColorScheme = lightColorScheme(
     outlineVariant = LightOutlineVariant,
     inverseSurface = DarkSurface,
     inverseOnSurface = DarkTextPrimary,
-    inversePrimary = EmeraldDark,
-    surfaceTint = Emerald,
+    inversePrimary = VividBlue,
+    surfaceTint = SlateNavy,
     scrim = Color(0x66000000)
 )
 
 private val EasyMoneyDarkColorScheme = darkColorScheme(
-    primary = Emerald,
-    onPrimary = Color(0xFF00291E),
-    primaryContainer = Color(0xFF004F39),
-    onPrimaryContainer = Color(0xFFD7FFF0),
-    secondary = ElectricBlue,
-    onSecondary = Color(0xFF08214D),
-    secondaryContainer = Color(0xFF163A7A),
-    onSecondaryContainer = Color(0xFFDCE8FF),
-    tertiary = PremiumGold,
-    onTertiary = Color(0xFF3C2A00),
-    tertiaryContainer = Color(0xFF6E4C00),
-    onTertiaryContainer = Color(0xFFFFEAB5),
+    primary = VividBlue,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF1D4ED8),
+    onPrimaryContainer = Color(0xFFDBEAFE),
+    secondary = CyanAccent,
+    onSecondary = Color(0xFF083344),
+    secondaryContainer = Color(0xFF164E63),
+    onSecondaryContainer = Color(0xFFCFFAFE),
+    tertiary = SlateNavy,
+    onTertiary = Color(0xFFF8FAFC),
+    tertiaryContainer = Color(0xFF1E293B),
+    onTertiaryContainer = Color(0xFFE2E8F0),
     background = DarkBackground,
     onBackground = DarkTextPrimary,
     surface = DarkSurface,
@@ -108,8 +107,8 @@ private val EasyMoneyDarkColorScheme = darkColorScheme(
     outlineVariant = DarkOutlineVariant,
     inverseSurface = LightSurface,
     inverseOnSurface = LightTextPrimary,
-    inversePrimary = EmeraldDark,
-    surfaceTint = Emerald,
+    inversePrimary = VividBlue,
+    surfaceTint = VividBlue,
     scrim = Color(0x99000000)
 )
 
@@ -126,7 +125,7 @@ data class TradingExtraColors(
 private val LightTradingExtraColors = TradingExtraColors(
     gain = GainGreen,
     loss = LossRed,
-    neutral = ElectricBlue,
+    neutral = VividBlue,
     bullishGlow = GainGreen.copy(alpha = 0.12f),
     bearishGlow = LossRed.copy(alpha = 0.12f),
     warning = WarningAmber
@@ -135,7 +134,7 @@ private val LightTradingExtraColors = TradingExtraColors(
 private val DarkTradingExtraColors = TradingExtraColors(
     gain = GainGreen,
     loss = LossRed,
-    neutral = ElectricBlue,
+    neutral = VividBlue,
     bullishGlow = GainGreen.copy(alpha = 0.18f),
     bearishGlow = LossRed.copy(alpha = 0.18f),
     warning = WarningAmber

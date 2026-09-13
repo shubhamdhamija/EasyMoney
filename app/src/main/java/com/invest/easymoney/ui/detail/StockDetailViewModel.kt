@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.invest.easymoney.di.DeviceId
 import com.invest.easymoney.domain.model.Alert
 import com.invest.easymoney.domain.model.AlertType
+import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
 import com.invest.easymoney.domain.repository.AiInsightRepository
 import com.invest.easymoney.domain.repository.BackendRepository
 import com.invest.easymoney.domain.repository.StockRepository
-import com.invest.easymoney.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -32,17 +32,26 @@ class StockDetailViewModel @Inject constructor(
 
     val symbol: String = checkNotNull(savedStateHandle["symbol"])
 
-    private val _stockState = MutableStateFlow<Resource<Stock>>(Resource.Loading)
-    val stockState: StateFlow<Resource<Stock>> = _stockState
+    private val _stockState = MutableStateFlow<NetworkResult<Stock>?>(null)
+    val stockState: StateFlow<NetworkResult<Stock>?> = _stockState
 
-    private val _newsState = MutableStateFlow<Resource<List<News>>>(Resource.Loading)
-    val newsState: StateFlow<Resource<List<News>>> = _newsState
+    private val _newsState = MutableStateFlow<NetworkResult<List<News>>?>(null)
+    val newsState: StateFlow<NetworkResult<List<News>>?> = _newsState
 
-    private val _insightState = MutableStateFlow<Resource<StockInsight>>(Resource.Loading)
-    val insightState: StateFlow<Resource<StockInsight>> = _insightState
+    private val _insightState = MutableStateFlow<NetworkResult<StockInsight>?>(null)
+    val insightState: StateFlow<NetworkResult<StockInsight>?> = _insightState
 
-    private val _explainState = MutableStateFlow<Resource<String>?>(null)
-    val explainState: StateFlow<Resource<String>?> = _explainState
+    private val _explainState = MutableStateFlow<NetworkResult<String>?>(null)
+    val explainState: StateFlow<NetworkResult<String>?> = _explainState
+
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isInsightLoading = MutableStateFlow(false)
+    val isInsightLoading: StateFlow<Boolean> = _isInsightLoading
+
+    private val _isExplainLoading = MutableStateFlow(false)
+    val isExplainLoading: StateFlow<Boolean> = _isExplainLoading
 
     private val _isInWatchlist = MutableStateFlow(false)
     val isInWatchlist: StateFlow<Boolean> = _isInWatchlist
@@ -59,9 +68,11 @@ class StockDetailViewModel @Inject constructor(
     fun loadDetail() {
         loadingJob?.cancel()
         loadingJob = viewModelScope.launch {
-            _stockState.value = Resource.Loading
-            _newsState.value = Resource.Loading
-            _insightState.value = Resource.Loading
+            _isLoading.value = true
+            _isInsightLoading.value = true
+            _stockState.value = null
+            _newsState.value = null
+            _insightState.value = null
 
             // Load stock, news, and watchlist status concurrently
             val stockDeferred = async { repository.getStockDetail(symbol) }
@@ -76,14 +87,17 @@ class StockDetailViewModel @Inject constructor(
             _newsState.value = newsResult
 
             // Fetch AI insight after stock+news data is available
-            val stock = (stockResult as? Resource.Success)?.data
-            val newsList = (newsResult as? Resource.Success)?.data ?: emptyList()
+            val stock = (stockResult as? NetworkResult.Success)?.data
+            val newsList = (newsResult as? NetworkResult.Success)?.data ?: emptyList()
 
             _insightState.value = if (stock != null) {
                 aiRepository.getStockInsight(symbol, stock, newsList)
             } else {
-                Resource.Error("AI insight requires stock data")
+                NetworkResult.Error(IllegalStateException("AI insight requires stock data"))
             }
+
+            _isInsightLoading.value = false
+            _isLoading.value = false
         }
     }
 
@@ -117,10 +131,14 @@ class StockDetailViewModel @Inject constructor(
     }
 
     fun explainMove() {
-        if (_explainState.value is Resource.Loading) return
+        if (_isExplainLoading.value) return
         viewModelScope.launch {
-            _explainState.value = Resource.Loading
-            _explainState.value = backendRepository.explainMove(symbol)
+            _isExplainLoading.value = true
+            try {
+                _explainState.value = backendRepository.explainMove(symbol)
+            } finally {
+                _isExplainLoading.value = false
+            }
         }
     }
 

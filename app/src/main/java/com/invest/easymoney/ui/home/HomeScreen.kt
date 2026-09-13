@@ -1,5 +1,6 @@
 package com.invest.easymoney.ui.home
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
@@ -47,7 +48,13 @@ import com.invest.easymoney.ui.theme.GainGreen
 import com.invest.easymoney.ui.theme.LossRed
 import com.invest.easymoney.ui.theme.TradingShapes
 import com.invest.easymoney.ui.theme.TradingTextStyles
+import com.invest.easymoney.util.Constants
 import com.invest.easymoney.util.Resource
+import java.util.Locale
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlin.math.absoluteValue
 
 private enum class HomeTab(val title: String) {
@@ -62,20 +69,32 @@ fun HomeScreen(
     onStockClick: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val state by viewModel.topStocksState.collectAsStateWithLifecycle()
-    val gainers by viewModel.gainers.collectAsStateWithLifecycle()
-    val losers by viewModel.losers.collectAsStateWithLifecycle()
-    val trending by viewModel.trending.collectAsStateWithLifecycle()
-    val aiPicksState by viewModel.aiPicksState.collectAsStateWithLifecycle()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchState by viewModel.searchState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val stocksState = state.stocks
+    val aiPicksState = state.aiPicks
+    val searchUiState = state.search
+    val allStocks = remember(stocksState) { (stocksState as? Resource.Success)?.data.orEmpty() }
+    val gainers = remember(allStocks) { allStocks.sortedByDescending { it.changePercent }.take(5) }
+    val losers = remember(allStocks) { allStocks.sortedBy { it.changePercent }.take(5) }
+    val trending = remember(allStocks) { allStocks.filter { it.symbol in Constants.TRENDING_STOCKS }.take(5) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by rememberSaveable { mutableStateOf(HomeTab.GAINERS) }
 
-    if (aiPicksState != null) {
+    LaunchedEffect(Unit) {
+        snapshotFlow { searchUiState.query }
+            .map(String::trim)
+            .debounce(500)
+            .distinctUntilChanged()
+            .filter { it.isNotBlank() }
+            .collect { query ->
+                Log.d("SearchAnalytics", "Search Started: $query")
+            }
+    }
+
+    if (aiPicksState != AiPicksState.Idle) {
         AiPicksBottomSheetUltra(
-            aiPicksState = aiPicksState!!,
+            aiPicksState = aiPicksState,
             onDismiss = { viewModel.dismissAiPicks() }
         )
     }
@@ -84,18 +103,18 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             HomeSearchFirstTopBar(
-                isRefreshing = state is Resource.Loading,
+                isRefreshing = stocksState is Resource.Loading,
                 onRefresh = { viewModel.loadStocks() }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        when (state) {
+        when (stocksState) {
             is Resource.Loading -> SearchFirstLoadingState(
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
             is Resource.Error -> SearchFirstErrorState(
-                message = (state as Resource.Error).message,
+                message = (stocksState as Resource.Error).message,
                 onRetry = { viewModel.loadStocks() },
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
@@ -112,42 +131,41 @@ fun HomeScreen(
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
                         SearchHeaderCard(
-                            query = searchQuery,
-                            onQueryChange = { viewModel.setSearchQuery(it) },
-                            onSearch = { viewModel.searchSymbols() }
+                            query = searchUiState.query,
+                            onQueryChange = { viewModel.setSearchQuery(it) }
                         )
                     }
 
-                    when (searchState) {
-                        is Resource.Loading -> item { InlineLoadingCard(text = "Searching symbols...") }
-                        is Resource.Error -> item {
+                    when {
+                        searchUiState.isLoading -> item { InlineLoadingCard(text = "Searching symbols...") }
+                        searchUiState.error != null -> item {
                             InlineErrorCard(
-                                message = (searchState as Resource.Error).message ?: "Search error"
+                                message = searchUiState.error ?: "Search error"
                             )
                         }
-                        is Resource.Success -> {
-                            val results = (searchState as Resource.Success).data
-                            if (results.isNotEmpty()) {
-                                item {
-                                    SectionHeader(
-                                        title = "Search Results",
-                                        subtitle = "Tap a stock to open details"
-                                    )
-                                }
-                                items(results, key = { it.symbol }) { result ->
-                                    SearchResultCard(
-                                        symbol = result.symbol,
-                                        name = result.name,
-                                        exchange = result.exchange,
-                                        onClick = { onStockClick(result.symbol) }
-                                    )
-                                }
+                        searchUiState.results.isNotEmpty() -> {
+                            item {
+                                SectionHeader(
+                                    title = "Search Results",
+                                    subtitle = "Tap a stock to open details"
+                                )
                             }
+                            items(searchUiState.results, key = { it.symbol }) { result ->
+                                SearchResultCard(
+                                    symbol = result.symbol,
+                                    name = result.name,
+                                    exchange = result.exchange,
+                                    onClick = { onStockClick(result.symbol) }
+                                )
+                            }
+                        }
+                        searchUiState.query.isNotBlank() -> item {
+                            EmptyStocksState(message = "No matching stocks found")
                         }
                         else -> Unit
                     }
@@ -157,7 +175,7 @@ fun HomeScreen(
                             gainers = gainers,
                             losers = losers,
                             trending = trending,
-                            isAiLoading = aiPicksState is Resource.Loading,
+                            isAiLoading = aiPicksState is AiPicksState.Loading,
                             onAiClick = { viewModel.loadAiPicks() }
                         )
                     }
@@ -251,7 +269,7 @@ fun HomeScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
-    LargeTopAppBar(
+    TopAppBar(
         title = {
             Column {
                 Text("EasyMoney", style = TradingTextStyles.Ticker, fontWeight = FontWeight.Bold)
@@ -275,7 +293,7 @@ private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) 
                 }
             }
         },
-        colors = TopAppBarDefaults.largeTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.onPrimary,
             actionIconContentColor = MaterialTheme.colorScheme.onPrimary
@@ -284,7 +302,7 @@ private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) 
 }
 
 @Composable
-private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit, onSearch: () -> Unit) {
+private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = TradingShapes.HeroCard,
@@ -300,29 +318,15 @@ private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit, onS
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(14.dp))
-            Row(
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Search by symbol or company") },
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    shape = TradingShapes.Input
-                )
-                Button(
-                    onClick = onSearch,
-                    modifier = Modifier.height(56.dp),
-                    shape = TradingShapes.Input,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Search", style = TradingTextStyles.Chip)
-                }
-            }
+                placeholder = { Text("Search by symbol or company") },
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                shape = TradingShapes.Input
+            )
         }
     }
 }
@@ -430,14 +434,14 @@ private fun MarketPulseHero(
                     MarketSnapshotCard(
                         title = "Top Gainer",
                         symbol = topGainer?.symbol ?: "--",
-                        movement = topGainer?.let { "+${String.format("%.2f", it.changePercent)}%" } ?: "--",
+                        movement = topGainer?.let { formatSignedMove(it.change, it.changePercent) } ?: "--",
                         color = GainGreen,
                         modifier = Modifier.weight(1f)
                     )
                     MarketSnapshotCard(
                         title = "Top Loser",
                         symbol = topLoser?.symbol ?: "--",
-                        movement = topLoser?.let { "${String.format("%.2f", it.changePercent)}%" } ?: "--",
+                        movement = topLoser?.let { formatSignedMove(it.change, it.changePercent) } ?: "--",
                         color = LossRed,
                         modifier = Modifier.weight(1f)
                     )
@@ -477,7 +481,7 @@ private fun LiveTickerStrip(stocks: List<Stock>, onStockClick: (String) -> Unit)
                     Text(stock.symbol, style = TradingTextStyles.Chip, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${if (isPositive) "+" else ""}${String.format("%.2f", stock.changePercent)}%",
+                        text = formatSignedMove(stock.change, stock.changePercent),
                         style = TradingTextStyles.Chip,
                         color = accent,
                         fontWeight = FontWeight.SemiBold
@@ -534,7 +538,7 @@ private fun TopMoverChips(stocks: List<Stock>, onStockClick: (String) -> Unit) {
                     Text(stock.symbol, style = TradingTextStyles.Chip, fontWeight = FontWeight.Bold, color = chipColor)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${if (isPositive) "+" else ""}${String.format("%.2f", stock.changePercent)}%",
+                        text = formatSignedMove(stock.change, stock.changePercent),
                         style = TradingTextStyles.Chip,
                         color = chipColor
                     )
@@ -587,7 +591,7 @@ private fun ModernStockCard(stock: Stock, onClick: () -> Unit) {
     val isPositive = stock.changePercent >= 0
     val changeColor = if (isPositive) GainGreen else LossRed
     val trendIcon = if (isPositive) Icons.Default.TrendingUp else Icons.Default.TrendingDown
-    val movementText = "${if (isPositive) "+" else ""}${String.format("%.2f", stock.changePercent)}%"
+    val movementText = formatSignedMove(stock.change, stock.changePercent)
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -695,7 +699,7 @@ private fun ForYouCard(stock: Stock, onClick: () -> Unit) {
             Text("$${String.format("%.2f", stock.currentPrice)}", style = TradingTextStyles.StatValue, fontWeight = FontWeight.SemiBold)
             Surface(shape = TradingShapes.Pill, color = accent.copy(alpha = 0.12f)) {
                 Text(
-                    text = "${if (isPositive) "+" else ""}${String.format("%.2f", stock.changePercent)}%",
+                    text = formatSignedMove(stock.change, stock.changePercent),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     style = TradingTextStyles.Chip,
                     color = accent,
@@ -706,9 +710,16 @@ private fun ForYouCard(stock: Stock, onClick: () -> Unit) {
     }
 }
 
+private fun formatSignedMove(change: Double, changePercent: Double): String {
+    val sign = if (change >= 0) "+" else "-"
+    val amount = String.format(Locale.US, "%.2f", change.absoluteValue)
+    val percent = String.format(Locale.US, "%.2f", changePercent.absoluteValue)
+    return "$sign $$amount ($sign$percent%)"
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AiPicksBottomSheetUltra(aiPicksState: Resource<List<AiPick>>, onDismiss: () -> Unit) {
+private fun AiPicksBottomSheetUltra(aiPicksState: AiPicksState, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Surface(shape = TradingShapes.BottomSheet, color = MaterialTheme.colorScheme.background) {
@@ -718,7 +729,8 @@ private fun AiPicksBottomSheetUltra(aiPicksState: Resource<List<AiPick>>, onDism
             ) {
                 Text("AI Picks Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 when (aiPicksState) {
-                    is Resource.Loading -> {
+                    AiPicksState.Idle -> Unit
+                    AiPicksState.Loading -> {
                         Box(modifier = Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 CircularProgressIndicator()
@@ -726,12 +738,12 @@ private fun AiPicksBottomSheetUltra(aiPicksState: Resource<List<AiPick>>, onDism
                             }
                         }
                     }
-                    is Resource.Error -> InlineErrorCard(message = "⚠️ ${aiPicksState.message}")
-                    is Resource.Success -> {
-                        if (aiPicksState.data.isEmpty()) {
+                    is AiPicksState.Error -> InlineErrorCard(message = "⚠️ ${aiPicksState.message}")
+                    is AiPicksState.Success -> {
+                        if (aiPicksState.picks.isEmpty()) {
                             Text("No picks available right now.", style = MaterialTheme.typography.bodyMedium)
                         } else {
-                            aiPicksState.data.forEachIndexed { index, pick ->
+                            aiPicksState.picks.forEachIndexed { index, pick ->
                                 AiPickPremiumCard(rank = index + 1, pick = pick)
                             }
                         }

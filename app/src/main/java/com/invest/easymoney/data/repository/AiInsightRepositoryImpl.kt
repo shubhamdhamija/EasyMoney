@@ -8,6 +8,7 @@ import com.invest.easymoney.data.api.dto.OpenAiMessage
 import com.invest.easymoney.data.api.dto.OpenAiRequest
 import com.invest.easymoney.data.api.dto.ResponseFormat
 import com.invest.easymoney.domain.model.AiPick
+import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
@@ -39,11 +40,11 @@ class AiInsightRepositoryImpl @Inject constructor(
         symbol: String,
         stock: Stock,
         news: List<News>
-    ): Resource<StockInsight> {
+    ): NetworkResult<StockInsight> {
         cacheMutex.withLock {
             val cached = insightCache[symbol]
             if (cached != null && System.currentTimeMillis() - cached.second < CACHE_TTL_MS) {
-                return Resource.Success(cached.first)
+                return NetworkResult.Success(cached.first)
             }
         }
 
@@ -65,10 +66,10 @@ class AiInsightRepositoryImpl @Inject constructor(
             )
 
             val content = response.choices?.firstOrNull()?.message?.content
-                ?: return Resource.Error("Empty response from AI")
+                ?: return NetworkResult.Error(IllegalStateException("Empty response from AI"))
 
             val parsed = parseInsight(content)
-                ?: return Resource.Error("Failed to parse AI response")
+                ?: return NetworkResult.Error(IllegalStateException("Failed to parse AI response"))
 
             val sentiment = parsed.sentiment?.lowercase()?.trim()
                 ?.takeIf { it in setOf("bullish", "bearish", "neutral") } ?: "neutral"
@@ -85,12 +86,12 @@ class AiInsightRepositoryImpl @Inject constructor(
                 insightCache[symbol] = Pair(insight, System.currentTimeMillis())
             }
 
-            Resource.Success(insight)
+            NetworkResult.Success(insight)
         }.getOrElse { e ->
             if (isNetworkError(e)) {
-                Resource.Success(buildFallbackInsight(symbol, stock, news))
+                NetworkResult.Success(buildFallbackInsight(symbol, stock, news))
             } else {
-                Resource.Error(mapApiError(e))
+                NetworkResult.Error(IllegalStateException(mapApiError(e), e))
             }
         }
     }

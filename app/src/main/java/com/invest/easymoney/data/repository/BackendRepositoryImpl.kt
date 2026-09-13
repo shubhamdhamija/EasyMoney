@@ -3,6 +3,7 @@ package com.invest.easymoney.data.repository
 import com.invest.easymoney.data.api.BackendApiService
 import com.invest.easymoney.data.api.WatchlistChangePayload
 import com.invest.easymoney.domain.model.EarningsReport
+import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.UpcomingEarning
 import com.invest.easymoney.domain.repository.BackendRepository
 import com.invest.easymoney.util.Resource
@@ -23,16 +24,16 @@ class BackendRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun explainMove(symbol: String): Resource<String> {
+    override suspend fun explainMove(symbol: String): NetworkResult<String> {
         return try {
             val response = backendApiService.explainMove(symbol)
             if (response.ok && response.explanation != null) {
-                Resource.Success(response.explanation)
+                NetworkResult.Success(response.explanation)
             } else {
-                Resource.Error(response.error ?: "Unknown error")
+                NetworkResult.Error(IllegalStateException(response.error ?: "Unknown error"))
             }
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "An error occurred")
+            NetworkResult.Error(e)
         }
     }
 
