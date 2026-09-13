@@ -48,6 +48,7 @@ import com.invest.easymoney.ui.theme.GainGreen
 import com.invest.easymoney.ui.theme.LossRed
 import com.invest.easymoney.ui.theme.TradingShapes
 import com.invest.easymoney.ui.theme.TradingTextStyles
+import com.invest.easymoney.util.Constants
 import com.invest.easymoney.util.Resource
 import java.util.Locale
 import kotlinx.coroutines.flow.debounce
@@ -68,12 +69,14 @@ fun HomeScreen(
     onStockClick: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val state by viewModel.topStocksState.collectAsStateWithLifecycle()
-    val gainers by viewModel.gainers.collectAsStateWithLifecycle()
-    val losers by viewModel.losers.collectAsStateWithLifecycle()
-    val trending by viewModel.trending.collectAsStateWithLifecycle()
-    val aiPicksState by viewModel.aiPicksState.collectAsStateWithLifecycle()
-    val searchUiState by viewModel.searchUiState.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val stocksState = state.stocks
+    val aiPicksState = state.aiPicks
+    val searchUiState = state.search
+    val allStocks = remember(stocksState) { (stocksState as? Resource.Success)?.data.orEmpty() }
+    val gainers = remember(allStocks) { allStocks.sortedByDescending { it.changePercent }.take(5) }
+    val losers = remember(allStocks) { allStocks.sortedBy { it.changePercent }.take(5) }
+    val trending = remember(allStocks) { allStocks.filter { it.symbol in Constants.TRENDING_STOCKS }.take(5) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by rememberSaveable { mutableStateOf(HomeTab.GAINERS) }
@@ -89,9 +92,9 @@ fun HomeScreen(
             }
     }
 
-    if (aiPicksState != null) {
+    if (aiPicksState != AiPicksState.Idle) {
         AiPicksBottomSheetUltra(
-            aiPicksState = aiPicksState!!,
+            aiPicksState = aiPicksState,
             onDismiss = { viewModel.dismissAiPicks() }
         )
     }
@@ -100,18 +103,18 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             HomeSearchFirstTopBar(
-                isRefreshing = state is Resource.Loading,
+                isRefreshing = stocksState is Resource.Loading,
                 onRefresh = { viewModel.loadStocks() }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        when (state) {
+        when (stocksState) {
             is Resource.Loading -> SearchFirstLoadingState(
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
             is Resource.Error -> SearchFirstErrorState(
-                message = (state as Resource.Error).message,
+                message = (stocksState as Resource.Error).message,
                 onRetry = { viewModel.loadStocks() },
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
@@ -172,7 +175,7 @@ fun HomeScreen(
                             gainers = gainers,
                             losers = losers,
                             trending = trending,
-                            isAiLoading = aiPicksState is Resource.Loading,
+                            isAiLoading = aiPicksState is AiPicksState.Loading,
                             onAiClick = { viewModel.loadAiPicks() }
                         )
                     }
@@ -716,7 +719,7 @@ private fun formatSignedMove(change: Double, changePercent: Double): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AiPicksBottomSheetUltra(aiPicksState: Resource<List<AiPick>>, onDismiss: () -> Unit) {
+private fun AiPicksBottomSheetUltra(aiPicksState: AiPicksState, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Surface(shape = TradingShapes.BottomSheet, color = MaterialTheme.colorScheme.background) {
@@ -726,7 +729,8 @@ private fun AiPicksBottomSheetUltra(aiPicksState: Resource<List<AiPick>>, onDism
             ) {
                 Text("AI Picks Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 when (aiPicksState) {
-                    is Resource.Loading -> {
+                    AiPicksState.Idle -> Unit
+                    AiPicksState.Loading -> {
                         Box(modifier = Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 CircularProgressIndicator()
@@ -734,12 +738,12 @@ private fun AiPicksBottomSheetUltra(aiPicksState: Resource<List<AiPick>>, onDism
                             }
                         }
                     }
-                    is Resource.Error -> InlineErrorCard(message = "⚠️ ${aiPicksState.message}")
-                    is Resource.Success -> {
-                        if (aiPicksState.data.isEmpty()) {
+                    is AiPicksState.Error -> InlineErrorCard(message = "⚠️ ${aiPicksState.message}")
+                    is AiPicksState.Success -> {
+                        if (aiPicksState.picks.isEmpty()) {
                             Text("No picks available right now.", style = MaterialTheme.typography.bodyMedium)
                         } else {
-                            aiPicksState.data.forEachIndexed { index, pick ->
+                            aiPicksState.picks.forEachIndexed { index, pick ->
                                 AiPickPremiumCard(rank = index + 1, pick = pick)
                             }
                         }
