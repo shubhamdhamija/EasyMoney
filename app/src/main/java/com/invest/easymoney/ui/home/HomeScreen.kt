@@ -95,7 +95,7 @@ fun HomeScreen(
     if (aiPicksState != AiPicksState.Idle) {
         AiPicksBottomSheetUltra(
             aiPicksState = aiPicksState,
-            onDismiss = { viewModel.dismissAiPicks() }
+            onDismiss = { viewModel.onIntent(HomeIntent.DismissAiPicks) }
         )
     }
 
@@ -104,7 +104,7 @@ fun HomeScreen(
         topBar = {
             HomeSearchFirstTopBar(
                 isRefreshing = stocksState is Resource.Loading,
-                onRefresh = { viewModel.loadStocks() }
+                onRefresh = { viewModel.onIntent(HomeIntent.LoadStocks) }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -115,7 +115,7 @@ fun HomeScreen(
             )
             is Resource.Error -> SearchFirstErrorState(
                 message = (stocksState as Resource.Error).message,
-                onRetry = { viewModel.loadStocks() },
+                onRetry = { viewModel.onIntent(HomeIntent.LoadStocks) },
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
             is Resource.Success -> {
@@ -137,7 +137,9 @@ fun HomeScreen(
                     item {
                         SearchHeaderCard(
                             query = searchUiState.query,
-                            onQueryChange = { viewModel.setSearchQuery(it) }
+                            onQueryChange = {
+                                viewModel.onIntent(HomeIntent.SearchChanged(it))
+                            }
                         )
                     }
 
@@ -176,7 +178,7 @@ fun HomeScreen(
                             losers = losers,
                             trending = trending,
                             isAiLoading = aiPicksState is AiPicksState.Loading,
-                            onAiClick = { viewModel.loadAiPicks() }
+                            onAiClick = { viewModel.onIntent(HomeIntent.LoadAiPicks) }
                         )
                     }
 
