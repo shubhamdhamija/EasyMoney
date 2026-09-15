@@ -95,7 +95,16 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun loadStocks() {
+    fun onIntent(intent: HomeIntent) {
+        when (intent) {
+            is HomeIntent.SearchChanged -> setSearchQuery(intent.query)
+            HomeIntent.LoadStocks -> loadStocks()
+            HomeIntent.LoadAiPicks -> loadAiPicks()
+            HomeIntent.DismissAiPicks -> dismissAiPicks()
+        }
+    }
+
+    private fun loadStocks() {
         viewModelScope.launch {
             Log.d(TAG, "Loading stocks...")
             _uiState.update { it.copy(stocks = Resource.Loading) }
@@ -105,9 +114,11 @@ class HomeViewModel @Inject constructor(
                 is Resource.Success -> {
                     Log.d(TAG, "Stocks loaded: ${result.data.size} stocks")
                 }
+
                 is Resource.Error -> {
                     Log.e(TAG, "Failed to load stocks: ${result.message}")
                 }
+
                 is Resource.Loading -> {
                     Log.d(TAG, "Stocks loading...")
                 }
@@ -115,7 +126,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun loadAiPicks() {
+    private fun loadAiPicks() {
         if (aiPicksJob?.isActive == true) return
         aiPicksJob = viewModelScope.launch {
             _uiState.update { it.copy(aiPicks = AiPicksState.Loading) }
@@ -129,11 +140,11 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun dismissAiPicks() {
+    private fun dismissAiPicks() {
         _uiState.update { it.copy(aiPicks = AiPicksState.Idle) }
     }
 
-    fun setSearchQuery(q: String) {
+    private fun setSearchQuery(q: String) {
         _uiState.update { it.copy(search = it.search.copy(query = q, error = null)) }
         searchQuery.value = q
     }
