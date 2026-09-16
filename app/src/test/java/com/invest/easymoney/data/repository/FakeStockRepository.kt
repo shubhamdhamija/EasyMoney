@@ -46,7 +46,27 @@ class FakeStockRepository : StockRepository {
         return flow {
             emit(Resource.Loading)
             delay(1000)
-            emit(searchResult)
+            emit(
+
+                        Resource.Success(
+
+                                listOf(
+
+                                        StockSearchResult(
+
+                                                symbol = query,
+
+                        name = "$query Inc",
+
+                        exchange = "NASDAQ"
+
+            )
+
+            )
+
+            )
+            )
+
 
 
         }
