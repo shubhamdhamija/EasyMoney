@@ -19,6 +19,7 @@ room = "2.7.0"
 navigation = "2.8.5"
 coroutines = "1.8.1"
 turbine = "1.2.0"
+mockk = "1.13.12"
 coil = "2.7.0"
 firebaseBom = "33.7.0"
 workManager = "2.9.1"
@@ -79,6 +80,9 @@ coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-
 
 # Turbine
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+
+# MockK
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 
 # Coil
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
