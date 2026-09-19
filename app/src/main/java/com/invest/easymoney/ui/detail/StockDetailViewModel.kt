@@ -59,11 +59,23 @@ class StockDetailViewModel @Inject constructor(
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage
 
+    private val _events = MutableStateFlow<StockDetailEvent?>(null)
+    val events: StateFlow<StockDetailEvent?> = _events
+
+
     private var loadingJob: Job? = null
 
     init {
         loadDetail()
     }
+
+    sealed interface StockDetailEvent {
+
+        data class ShowSnackbar(
+            val message: String
+        ) : StockDetailEvent
+    }
+
 
     fun loadDetail() {
         loadingJob?.cancel()
@@ -112,7 +124,10 @@ class StockDetailViewModel @Inject constructor(
             } else {
                 repository.addToWatchlist(symbol)
                 _isInWatchlist.value = true
-                _snackbarMessage.value = "$symbol added to watchlist"
+
+                _events.emit(
+                    StockDetailEvent.ShowSnackbar("$symbol added to watchlist")
+                )
                 // Notify community (fire-and-forget)
                 launch { backendRepository.notifyWatchlistChange(deviceId, symbol, "add") }
             }

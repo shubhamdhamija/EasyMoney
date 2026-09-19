@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,7 +101,7 @@ fun StockDetailScreen(
     val isInsightLoading by viewModel.isInsightLoading.collectAsStateWithLifecycle()
     val isExplainLoading by viewModel.isExplainLoading.collectAsStateWithLifecycle()
     val isInWatchlist by viewModel.isInWatchlist.collectAsStateWithLifecycle()
-    val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
+
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showAlertDialog by remember { mutableStateOf(false) }
@@ -111,10 +112,14 @@ fun StockDetailScreen(
         WebViewBottomSheet(url = webViewUrl!!, onDismiss = { webViewUrl = null })
     }
 
-    LaunchedEffect(snackbarMessage) {
-        snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearSnackbar()
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is StockDetailViewModel.StockDetailEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                else -> {}
+            }
         }
     }
 
