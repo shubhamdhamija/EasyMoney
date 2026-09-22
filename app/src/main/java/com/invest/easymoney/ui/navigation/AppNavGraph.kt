@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -35,8 +36,8 @@ import com.invest.easymoney.ui.watchlist.WatchlistScreen
 sealed class Screen(
     val route: String,
     val label: String,
-    val selectedIcon: Icons.Filled.Home,
-    val unselectedIcon: Icons.Outlined.Home
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector
 ) {
     data object Home : Screen("home", "Home", Icons.Filled.Home, Icons.Outlined.Home)
     data object Watchlist : Screen("watchlist", "Watchlist", Icons.Filled.Star, Icons.Outlined.StarBorder)

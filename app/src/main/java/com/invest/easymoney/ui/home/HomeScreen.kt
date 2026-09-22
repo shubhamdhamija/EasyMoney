@@ -58,7 +58,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlin.math.absoluteValue
 
-private enum class HomeTab(val title: String) {
+enum class HomeTab(val title: String) {
     GAINERS("Gainers"),
     LOSERS("Losers"),
     TRENDING("Trending")
@@ -272,7 +272,7 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
+fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
     TopAppBar(
         title = {
             Column {
@@ -307,7 +307,7 @@ private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) 
 }
 
 @Composable
-private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
+fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("SearchHeaderCard"),
         shape = TradingShapes.HeroCard,
@@ -337,7 +337,7 @@ private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
 }
 
 @Composable
-private fun MarketPulseHero(
+fun MarketPulseHero(
     gainers: List<Stock>,
     losers: List<Stock>,
     trending: List<Stock>,
@@ -468,7 +468,7 @@ private fun MarketSnapshotCard(title: String, symbol: String, movement: String, 
 }
 
 @Composable
-private fun LiveTickerStrip(stocks: List<Stock>, onStockClick: (String) -> Unit) {
+fun LiveTickerStrip(stocks: List<Stock>, onStockClick: (String) -> Unit) {
     if (stocks.isEmpty()) return
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).testTag("LiveTickerStrip"),
@@ -498,7 +498,7 @@ private fun LiveTickerStrip(stocks: List<Stock>, onStockClick: (String) -> Unit)
 }
 
 @Composable
-private fun StickyMarketTabs(selectedTab: HomeTab, onTabSelected: (HomeTab) -> Unit) {
+fun StickyMarketTabs(selectedTab: HomeTab, onTabSelected: (HomeTab) -> Unit) {
     Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).horizontalScroll(rememberScrollState()).testTag("StickyMarketTabsRow"),
@@ -564,7 +564,7 @@ private fun SectionHeader(title: String, subtitle: String) {
 }
 
 @Composable
-private fun SearchResultCard(symbol: String, name: String, exchange: String, onClick: () -> Unit) {
+fun SearchResultCard(symbol: String, name: String, exchange: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("SearchResultCard_$symbol"),
         shape = TradingShapes.Card,
@@ -593,7 +593,7 @@ private fun SearchResultCard(symbol: String, name: String, exchange: String, onC
 }
 
 @Composable
-private fun ModernStockCard(stock: Stock, onClick: () -> Unit) {
+fun ModernStockCard(stock: Stock, onClick: () -> Unit) {
     val isPositive = stock.changePercent >= 0
     val changeColor = if (isPositive) GainGreen else LossRed
     val trendIcon = if (isPositive) Icons.Default.TrendingUp else Icons.Default.TrendingDown
@@ -669,7 +669,7 @@ private fun MiniMomentumBar(value: Double, positiveColor: Color, negativeColor: 
 }
 
 @Composable
-private fun ForYouCarousel(stocks: List<Stock>, onStockClick: (String) -> Unit) {
+fun ForYouCarousel(stocks: List<Stock>, onStockClick: (String) -> Unit) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.testTag("ForYouCarousel")

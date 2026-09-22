@@ -55,9 +55,8 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
                 val alerts = (state as Resource.Success<List<Alert>>).data
                 if (alerts.isEmpty()) {
                     Box(
-                        Modifier.fillMaxSize().padding(padding),
+                        Modifier.fillMaxSize().padding(padding).testTag("AlertsEmptyState"),
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.testTag("AlertsEmptyState")
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
