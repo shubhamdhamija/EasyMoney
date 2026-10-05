@@ -18,6 +18,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -59,8 +61,8 @@ class StockDetailViewModel @Inject constructor(
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage
 
-    private val _events = MutableStateFlow<StockDetailEvent?>(null)
-    val events: StateFlow<StockDetailEvent?> = _events
+    private val _events = MutableSharedFlow<StockDetailEvent>()
+    val events: SharedFlow<StockDetailEvent> = _events
 
 
     private var loadingJob: Job? = null
@@ -122,7 +124,8 @@ class StockDetailViewModel @Inject constructor(
                 // Notify community (fire-and-forget)
                 launch { backendRepository.notifyWatchlistChange(deviceId, symbol, "remove") }
             } else {
-                repository.addToWatchlist(symbol)
+                val companyName = (_stockState.value as? NetworkResult.Success)?.data?.name.orEmpty()
+                repository.addToWatchlist(symbol, companyName)
                 _isInWatchlist.value = true
 
                 _events.emit(
