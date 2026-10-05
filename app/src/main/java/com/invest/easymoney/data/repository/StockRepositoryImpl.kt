@@ -170,16 +170,19 @@ class StockRepositoryImpl @Inject constructor(
     override suspend fun addToWatchlist(symbol: String, companyName: String) =
         watchlistDao.insert(
             WatchlistEntity(
-                symbol = symbol,
-                companyName = companyName.ifBlank { symbol }
+                symbol = normalizeSymbol(symbol),
+                companyName = companyName.ifBlank { normalizeSymbol(symbol) }
             )
         )
 
     override suspend fun removeFromWatchlist(symbol: String) =
-        watchlistDao.delete(symbol)
+        watchlistDao.delete(normalizeSymbol(symbol))
 
     override suspend fun isInWatchlist(symbol: String): Boolean =
-        watchlistDao.count(symbol) > 0
+        watchlistDao.contains(normalizeSymbol(symbol))
+
+    private fun normalizeSymbol(symbol: String): String =
+        symbol.trim().uppercase()
 
     // ── Alerts ────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 package com.invest.easymoney.data.repository
 
 import com.invest.easymoney.domain.model.*
+import com.invest.easymoney.data.local.entity.WatchlistEntity
 import com.invest.easymoney.domain.repository.StockRepository
 import com.invest.easymoney.ui.home.HomeIntent
 import com.invest.easymoney.ui.home.HomeViewModel
@@ -80,7 +81,11 @@ class FakeStockRepository : StockRepository {
         TODO("Not yet implemented")
     }
 
-    override suspend fun addToWatchlist(symbol: String) {
+    override fun getWatchlist(): Flow<List<WatchlistEntity>> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun addToWatchlist(symbol: String, companyName: String) {
         TODO("Not yet implemented")
     }
 
