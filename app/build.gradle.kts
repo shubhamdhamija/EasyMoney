@@ -27,6 +27,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "OPENAI_API_KEY", "\"${localProperties["OPENAI_API_KEY"] ?: ""}\"")
+        buildConfigField("String", "BACKEND_DEVICE_HOST", "\"${localProperties["BACKEND_DEVICE_HOST"] ?: "10.0.0.57"}\"")
+        buildConfigField("int", "BACKEND_PORT", "${localProperties["BACKEND_PORT"] ?: "8080"}")
     }
 
     buildTypes {

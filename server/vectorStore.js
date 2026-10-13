@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PineconeClient } = require('@pinecone-database/pinecone');
 
 const INDEX_NAME = process.env.VECTOR_INDEX || 'stock-index';
 const STORAGE_DIR = path.join(__dirname, 'local_vectors');
@@ -14,9 +13,21 @@ if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
 
 // Pinecone client (lazy)
 let pinecone = null;
+let pineconeLoadFailed = false;
 async function getPineconeClient() {
   if (!pinecone) {
     if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_ENVIRONMENT) return null;
+    if (pineconeLoadFailed) return null;
+
+    let PineconeClient;
+    try {
+      ({ PineconeClient } = require('@pinecone-database/pinecone'));
+    } catch (e) {
+      pineconeLoadFailed = true;
+      console.warn('vectorStore: Pinecone SDK unavailable, falling back to local vectors:', e.message);
+      return null;
+    }
+
     pinecone = new PineconeClient();
     await pinecone.init({ apiKey: process.env.PINECONE_API_KEY, environment: process.env.PINECONE_ENVIRONMENT });
   }

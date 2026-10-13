@@ -21,9 +21,31 @@ const predictionEngine = require('./predictionEngine');
 const earningsService = require('./earningsService');
 const moversService = require('./moversService');
 const { buildFullContext } = require('./systemOrchestrator');
+const {
+  stockExplanationRouter
+} = require('./routes/stockExplanationRoutes');
 
 const app = express();
 app.use(bodyParser.json());
+app.use('/ai/explain', stockExplanationRouter);
+
+function hasFunction(target, methodName) {
+  return !!target && typeof target[methodName] === 'function';
+}
+
+async function invokeIfAvailable(target, methodName, args = [], label = methodName) {
+  if (!hasFunction(target, methodName)) {
+    console.warn(`[startup] ${label} unavailable; skipping`);
+    return null;
+  }
+
+  try {
+    return await target[methodName](...args);
+  } catch (e) {
+    console.warn(`[startup] ${label} failed:`, e.message);
+    return null;
+  }
+}
 
 app.get('/', (req, res) => res.send('EasyMoney AI Server'));
 
@@ -157,7 +179,10 @@ app.get('/stocks/search', async (req, res) => {
 app.get('/ai/explain/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
-    const explanation = await explainService.explainStockMove(symbol.toUpperCase());
+    const result = await explainService.explainStockMove(symbol.toUpperCase());
+    const explanation = typeof result === 'string'
+      ? result
+      : result?.explanation || 'No explanation available.';
     res.json({ ok: true, explanation });
   } catch (e) {
     console.error(e);
@@ -322,7 +347,9 @@ app.post('/ai/earnings/ingest/:symbol', async (req, res) => {
 app.get('/stocks/movers', (req, res) => {
   try {
     const limit = parseInt(req.query.limit || '10', 10);
-    const data = moversService.getMovers(limit);
+    const data = hasFunction(moversService, 'getMovers')
+      ? moversService.getMovers(limit)
+      : { ok: true, gainers: [], losers: [], mostActive: [], updatedAt: null };
     res.json({ ok: true, ...data });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -332,7 +359,9 @@ app.get('/stocks/movers', (req, res) => {
 app.get('/stocks/gainers', (req, res) => {
   try {
     const limit = parseInt(req.query.limit || '10', 10);
-    res.json({ ok: true, gainers: moversService.getGainers(limit), updatedAt: moversService.getCacheAge() });
+    const gainers = hasFunction(moversService, 'getGainers') ? moversService.getGainers(limit) : [];
+    const updatedAt = hasFunction(moversService, 'getCacheAge') ? moversService.getCacheAge() : null;
+    res.json({ ok: true, gainers, updatedAt });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -341,7 +370,9 @@ app.get('/stocks/gainers', (req, res) => {
 app.get('/stocks/losers', (req, res) => {
   try {
     const limit = parseInt(req.query.limit || '10', 10);
-    res.json({ ok: true, losers: moversService.getLosers(limit), updatedAt: moversService.getCacheAge() });
+    const losers = hasFunction(moversService, 'getLosers') ? moversService.getLosers(limit) : [];
+    const updatedAt = hasFunction(moversService, 'getCacheAge') ? moversService.getCacheAge() : null;
+    res.json({ ok: true, losers, updatedAt });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -351,12 +382,11 @@ app.get('/stocks/losers', (req, res) => {
 
 // Refresh gainers/losers every 5 minutes during market hours (Mon-Fri)
 cron.schedule('*/5 9-16 * * 1-5', async () => {
-  try { await moversService.updateMovers(); }
-  catch (e) { console.error('[cron] updateMovers failed:', e.message); }
+  await invokeIfAvailable(moversService, 'updateMovers', [], 'moversService.updateMovers');
 });
 
 // Initial fetch on startup (non-blocking)
-moversService.updateMovers().catch(e => console.warn('[startup] movers initial fetch:', e.message));
+invokeIfAvailable(moversService, 'updateMovers', [], 'moversService.updateMovers');
 
 // Ingest earnings for watchlist symbols daily at 6am
 cron.schedule('0 6 * * 1-5', async () => {
@@ -366,9 +396,15 @@ cron.schedule('0 6 * * 1-5', async () => {
       : ['AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMZN'];
     console.log('[cron] Ingesting earnings for', watchlist);
     for (const sym of watchlist) {
-      await earningsService.ingestEarningsToRAG(sym).catch(e => console.warn(`earnings ingest ${sym}:`, e.message));
+      await invokeIfAvailable(
+        earningsService,
+        'ingestEarningsToRAG',
+        [sym],
+        `earningsService.ingestEarningsToRAG(${sym})`
+      );
     }
   } catch (e) {
     console.error('[cron] earnings ingestion failed:', e.message);
   }
 });
+

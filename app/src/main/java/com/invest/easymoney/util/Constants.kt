@@ -1,5 +1,6 @@
 package com.invest.easymoney.util
 
+import com.invest.easymoney.BuildConfig
 import com.invest.easymoney.domain.model.Stock
 
 object Constants {
@@ -24,10 +25,17 @@ object Constants {
                     || android.os.Build.PRODUCT.contains("vbox86p")
                     || android.os.Build.PRODUCT.contains("emulator")
                     || android.os.Build.PRODUCT.contains("simulator")
-            return if (isEmulator) {
-                "http://10.0.2.2:8080/"
+
+            val backendHost = if (isEmulator) {
+                "10.0.2.2"
             } else {
-                "http://10.53.215.50:8080/"
+                BuildConfig.BACKEND_DEVICE_HOST
+            }
+
+            return if (isEmulator) {
+                "http://$backendHost:${BuildConfig.BACKEND_PORT}/"
+            } else {
+                "http://$backendHost:${BuildConfig.BACKEND_PORT}/"
             }
         }
 
