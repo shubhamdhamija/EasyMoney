@@ -15,6 +15,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.WebView
@@ -31,23 +32,24 @@ fun WebViewBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize().testTag("WebViewBottomSheet")
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
                 title = { Text("Article") },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.testTag("WebViewCloseButton")) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("WebViewTopBar")
             )
 
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(500.dp),
+                    .height(500.dp)
+                    .testTag("WebViewContent"),
                 factory = { context ->
                     WebView(context).apply {
                         webViewClient = WebViewClient()

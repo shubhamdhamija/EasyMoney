@@ -3,6 +3,7 @@ package com.invest.easymoney.di
 import android.content.Context
 import androidx.room.Room
 import com.invest.easymoney.data.local.AppDatabase
+import com.invest.easymoney.data.local.DatabaseMigrations
 import com.invest.easymoney.data.local.dao.AlertDao
 import com.invest.easymoney.data.local.dao.WatchlistDao
 import dagger.Module
@@ -20,7 +21,7 @@ object DatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "easymoney.db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(DatabaseMigrations.MIGRATION_1_2)
             .build()
 
     @Provides

@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -57,7 +58,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlin.math.absoluteValue
 
-private enum class HomeTab(val title: String) {
+enum class HomeTab(val title: String) {
     GAINERS("Gainers"),
     LOSERS("Losers"),
     TRENDING("Trending")
@@ -107,7 +108,8 @@ fun HomeScreen(
                 onRefresh = { viewModel.onIntent(HomeIntent.LoadStocks) }
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        modifier = Modifier.testTag("HomeScreenScaffold")
     ) { padding ->
         when (stocksState) {
             is Resource.Loading -> SearchFirstLoadingState(
@@ -130,7 +132,7 @@ fun HomeScreen(
                 val recommendedStocks = remember(marketPool) { marketPool.take(10) }
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier.fillMaxSize().padding(padding).testTag("HomeStocksLazyColumn"),
                     contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -270,7 +272,7 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
+fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
     TopAppBar(
         title = {
             Column {
@@ -285,12 +287,12 @@ private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) 
         actions = {
             if (isRefreshing) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp).padding(end = 6.dp),
+                    modifier = Modifier.size(24.dp).padding(end = 6.dp).testTag("TopBar_LoadingIndicator"),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                IconButton(onClick = onRefresh) {
+                IconButton(onClick = onRefresh, modifier = Modifier.testTag("TopBar_RefreshButton")) {
                     Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                 }
             }
@@ -299,14 +301,15 @@ private fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) 
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.onPrimary,
             actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-        )
+        ),
+        modifier = Modifier.testTag("HomeTopBar")
     )
 }
 
 @Composable
-private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
+fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("SearchHeaderCard"),
         shape = TradingShapes.HeroCard,
         elevation = CardDefaults.cardElevation(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -323,7 +326,7 @@ private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
             OutlinedTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("SearchInput"),
                 placeholder = { Text("Search by symbol or company") },
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
@@ -334,7 +337,7 @@ private fun SearchHeaderCard(query: String, onQueryChange: (String) -> Unit) {
 }
 
 @Composable
-private fun MarketPulseHero(
+fun MarketPulseHero(
     gainers: List<Stock>,
     losers: List<Stock>,
     trending: List<Stock>,
@@ -349,7 +352,7 @@ private fun MarketPulseHero(
     val topLoser = losers.minByOrNull { it.changePercent }
 
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = !isAiLoading, onClick = onAiClick),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = !isAiLoading, onClick = onAiClick).testTag("MarketPulseHeroCard"),
         shape = TradingShapes.HeroCard,
         elevation = CardDefaults.cardElevation(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -465,17 +468,17 @@ private fun MarketSnapshotCard(title: String, symbol: String, movement: String, 
 }
 
 @Composable
-private fun LiveTickerStrip(stocks: List<Stock>, onStockClick: (String) -> Unit) {
+fun LiveTickerStrip(stocks: List<Stock>, onStockClick: (String) -> Unit) {
     if (stocks.isEmpty()) return
     Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).testTag("LiveTickerStrip"),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         stocks.forEach { stock ->
             val isPositive = stock.changePercent >= 0
             val accent = if (isPositive) GainGreen else LossRed
             Surface(
-                modifier = Modifier.clickable { onStockClick(stock.symbol) },
+                modifier = Modifier.clickable { onStockClick(stock.symbol) }.testTag("LiveTicker_${stock.symbol}"),
                 shape = TradingShapes.Pill,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
@@ -495,10 +498,10 @@ private fun LiveTickerStrip(stocks: List<Stock>, onStockClick: (String) -> Unit)
 }
 
 @Composable
-private fun StickyMarketTabs(selectedTab: HomeTab, onTabSelected: (HomeTab) -> Unit) {
+fun StickyMarketTabs(selectedTab: HomeTab, onTabSelected: (HomeTab) -> Unit) {
     Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).horizontalScroll(rememberScrollState()).testTag("StickyMarketTabsRow"),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             HomeTab.entries.forEach { tab ->
@@ -510,7 +513,8 @@ private fun StickyMarketTabs(selectedTab: HomeTab, onTabSelected: (HomeTab) -> U
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
                         selectedLabelColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    modifier = Modifier.testTag("Tab_${tab.title}")
                 )
             }
         }
@@ -560,9 +564,9 @@ private fun SectionHeader(title: String, subtitle: String) {
 }
 
 @Composable
-private fun SearchResultCard(symbol: String, name: String, exchange: String, onClick: () -> Unit) {
+fun SearchResultCard(symbol: String, name: String, exchange: String, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("SearchResultCard_$symbol"),
         shape = TradingShapes.Card,
         elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -589,14 +593,14 @@ private fun SearchResultCard(symbol: String, name: String, exchange: String, onC
 }
 
 @Composable
-private fun ModernStockCard(stock: Stock, onClick: () -> Unit) {
+fun ModernStockCard(stock: Stock, onClick: () -> Unit) {
     val isPositive = stock.changePercent >= 0
     val changeColor = if (isPositive) GainGreen else LossRed
     val trendIcon = if (isPositive) Icons.Default.TrendingUp else Icons.Default.TrendingDown
     val movementText = formatSignedMove(stock.change, stock.changePercent)
 
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("StockCard_${stock.symbol}"),
         shape = TradingShapes.HeroCard,
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -665,8 +669,11 @@ private fun MiniMomentumBar(value: Double, positiveColor: Color, negativeColor: 
 }
 
 @Composable
-private fun ForYouCarousel(stocks: List<Stock>, onStockClick: (String) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+fun ForYouCarousel(stocks: List<Stock>, onStockClick: (String) -> Unit) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.testTag("ForYouCarousel")
+    ) {
         items(stocks, key = { it.symbol }) { stock ->
             ForYouCard(stock = stock, onClick = { onStockClick(stock.symbol) })
         }
@@ -678,7 +685,7 @@ private fun ForYouCard(stock: Stock, onClick: () -> Unit) {
     val isPositive = stock.changePercent >= 0
     val accent = if (isPositive) GainGreen else LossRed
     Card(
-        modifier = Modifier.width(195.dp).clickable(onClick = onClick),
+        modifier = Modifier.width(195.dp).clickable(onClick = onClick).testTag("ForYouCard_${stock.symbol}"),
         shape = TradingShapes.CarouselCard,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         elevation = CardDefaults.cardElevation(4.dp)
@@ -888,7 +895,8 @@ private fun SearchFirstErrorState(message: String, onRetry: () -> Unit, modifier
             Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("⚠️ $message", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onErrorContainer)
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onRetry, shape = TradingShapes.Input) { Text("Retry") }
+                Button(onClick = onRetry, modifier = Modifier.testTag("ErrorRetryButton"), shape = TradingShapes.Input)
+                { Text("Retry") }
             }
         }
     }

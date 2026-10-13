@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -45,6 +46,7 @@ fun IntradayLineChart(
                 .height(200.dp)
                 .fillMaxWidth()
                 .padding(16.dp)
+                .testTag("IntradayChartEmpty")
         ) {
             Text(text = "No intraday data", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         }
@@ -65,7 +67,7 @@ fun IntradayLineChart(
     var tooltipPx by remember { mutableStateOf(0f) }
     var tooltipPy by remember { mutableStateOf(0f) }
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxWidth().testTag("IntradayLineChart")) {
         // Pointer input needs access to canvas size, so attach to this Box/Canvas
         Canvas(modifier = Modifier
             .height(260.dp)
@@ -174,7 +176,8 @@ fun IntradayLineChart(
             text = String.format(Locale.getDefault(), "%.2f", lastValue),
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 16.dp, top = 6.dp),
+                .padding(start = 16.dp, top = 6.dp)
+                .testTag("IntradayChartCurrentPrice"),
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
@@ -183,7 +186,8 @@ fun IntradayLineChart(
             text = String.format(Locale.getDefault(), "%.2f", maxY),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(end = 16.dp, top = 6.dp),
+                .padding(end = 16.dp, top = 6.dp)
+                .testTag("IntradayChartMaxPrice"),
             fontSize = 12.sp,
             color = Color.DarkGray
         )
@@ -192,7 +196,8 @@ fun IntradayLineChart(
             text = String.format(Locale.getDefault(), "%.2f", minY),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 36.dp),
+                .padding(end = 16.dp, bottom = 36.dp)
+                .testTag("IntradayChartMinPrice"),
             fontSize = 12.sp,
             color = Color.DarkGray
         )
@@ -217,6 +222,7 @@ fun IntradayLineChart(
                 modifier = Modifier
                     .offset(x = tooltipOffsetDpX, y = tooltipOffsetDpY)
                     .width(120.dp)
+                    .testTag("IntradayChartTooltip")
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     Text(text = String.format(Locale.getDefault(), "%.2f", price), fontWeight = FontWeight.Bold)
@@ -229,7 +235,8 @@ fun IntradayLineChart(
         Row(modifier = Modifier
             .align(Alignment.BottomStart)
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, bottom = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            .padding(start = 12.dp, end = 12.dp, bottom = 4.dp)
+            .testTag("IntradayChartTimeLabels"), horizontalArrangement = Arrangement.SpaceBetween) {
             if (times != null && times.size == prices.size && times.isNotEmpty()) {
                 Text(text = timeFmt.format(Date(times.first() * 1000)), color = Color.DarkGray, fontSize = 12.sp)
                 Text(text = timeFmt.format(Date(times[times.size / 2] * 1000)), color = Color.DarkGray, fontSize = 12.sp)

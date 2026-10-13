@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,7 @@ fun WatchlistScreen(
                 title = { Text("Watchlist", fontWeight = FontWeight.Bold) },
                 actions = {
                     if (state !is Resource.Loading) {
-                        IconButton(onClick = { viewModel.refresh() }) {
+                        IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.testTag("WatchlistRefreshButton")) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                         }
                     }
@@ -58,12 +59,13 @@ fun WatchlistScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                modifier = Modifier.testTag("WatchlistTopBar")
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = selectedTab) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding).testTag("WatchlistScreenColumn")) {
+            TabRow(selectedTabIndex = selectedTab, modifier = Modifier.testTag("WatchlistTabRow")) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -73,7 +75,8 @@ fun WatchlistScreen(
                                 title,
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
                             )
-                        }
+                        },
+                        modifier = Modifier.testTag("WatchlistTab_$title")
                     )
                 }
             }
@@ -106,7 +109,7 @@ private fun WatchlistTab(
         is Resource.Loading -> Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
-        ) { CircularProgressIndicator() }
+        ) { CircularProgressIndicator(modifier = Modifier.testTag("WatchlistLoadingIndicator")) }
 
         is Resource.Error -> Box(
             Modifier.fillMaxSize(),
@@ -121,7 +124,7 @@ private fun WatchlistTab(
                 EmptyWatchlistPlaceholder()
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().testTag("WatchlistLazyColumn"),
                     contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -143,7 +146,8 @@ private fun EmptyWatchlistPlaceholder() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.testTag("EmptyWatchlistPlaceholder")
         ) {
             Text("⭐", style = MaterialTheme.typography.headlineLarge)
             Text(
@@ -192,7 +196,8 @@ private fun WatchlistItem(stock: Stock, onClick: () -> Unit, onRemove: () -> Uni
                 )
             }
         },
-        enableDismissFromStartToEnd = false
+        enableDismissFromStartToEnd = false,
+        modifier = Modifier.testTag("WatchlistItem_${stock.symbol}")
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -267,7 +272,7 @@ private fun EarningsTab(
     val upcomingMap = upcoming.associate { it.symbol.uppercase() to it }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().testTag("EarningsTabLazyColumn"),
         contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -290,7 +295,7 @@ private fun EarningsTab(
 @Composable
 private fun UpcomingEarningsBanner(upcoming: List<UpcomingEarning>) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("UpcomingEarningsBanner"),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
     ) {
@@ -317,7 +322,7 @@ private fun UpcomingEarningsBanner(upcoming: List<UpcomingEarning>) {
                         ) {
                             Text(
                                 text = earning.symbol,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp).testTag("EarningSymbol_${earning.symbol}"),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onTertiary
@@ -362,7 +367,7 @@ private fun StockEarningsCard(
     upcomingEarning: UpcomingEarning?
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("StockEarningsCard_$symbol"),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -411,7 +416,7 @@ private fun StockEarningsCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp).testTag("EarningsLoadingIndicator_$symbol"), strokeWidth = 2.dp)
                         Text(
                             "Loading earnings data…",
                             style = MaterialTheme.typography.bodySmall,
@@ -492,7 +497,7 @@ private fun EarningsQuartersTable(quarters: List<EarningsQuarter>) {
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(weight),
+                modifier = Modifier.weight(weight).testTag("EarningsTableHeader_$label"),
                 textAlign = if (label == "Quarter") TextAlign.Start else if (label == "Result") TextAlign.End else TextAlign.Center
             )
         }
@@ -522,7 +527,8 @@ private fun EarningsQuarterRow(quarter: EarningsQuarter) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .testTag("EarningsQuarterRow_${quarter.period}"),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -566,7 +572,8 @@ private fun EarningsQuarterRow(quarter: EarningsQuarter) {
 private fun EarningsBadge(text: String, color: Color) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = color.copy(alpha = 0.12f)
+        color = color.copy(alpha = 0.12f),
+        modifier = Modifier.testTag("EarningsBadge_$text")
     ) {
         Text(
             text = text,

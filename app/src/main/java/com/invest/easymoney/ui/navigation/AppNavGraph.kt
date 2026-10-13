@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -51,12 +52,13 @@ fun AppNavGraph() {
     val navController = rememberNavController()
 
     Scaffold(
-        bottomBar = { AppBottomBar(navController) }
+        bottomBar = { AppBottomBar(navController) },
+        modifier = Modifier.testTag("AppScaffold")
     ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding).testTag("NavHost")
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
@@ -99,14 +101,15 @@ private fun AppBottomBar(navController: NavHostController) {
     }
     if (!showBottomBar) return
 
-    NavigationBar {
+    NavigationBar(modifier = Modifier.testTag("BottomNavigationBar")) {
         bottomNavItems.forEach { screen ->
             val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
             NavigationBarItem(
                 icon = {
                     Icon(
                         if (selected) screen.selectedIcon else screen.unselectedIcon,
-                        contentDescription = screen.label
+                        contentDescription = screen.label,
+                        modifier = Modifier.testTag("NavIcon_${screen.label}")
                     )
                 },
                 label = { Text(screen.label) },
@@ -117,7 +120,8 @@ private fun AppBottomBar(navController: NavHostController) {
                         launchSingleTop = true
                         restoreState = true
                     }
-                }
+                },
+                modifier = Modifier.testTag("NavItem_${screen.label}")
             )
         }
     }

@@ -13,6 +13,9 @@ interface WatchlistDao {
     @Query("SELECT * FROM watchlist")
     fun getAll(): Flow<List<WatchlistEntity>>
 
+    @Query("SELECT * FROM watchlist")
+    suspend fun getAllOnce(): List<WatchlistEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: WatchlistEntity)
 
@@ -21,4 +24,15 @@ interface WatchlistDao {
 
     @Query("SELECT COUNT(*) FROM watchlist WHERE symbol = :symbol")
     suspend fun count(symbol: String): Int
+
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1
+            FROM watchlist
+            WHERE symbol = :symbol
+        )
+        """
+    )
+    suspend fun contains(symbol: String): Boolean
 }

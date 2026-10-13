@@ -162,17 +162,27 @@ class StockRepositoryImpl @Inject constructor(
 
     // ── Watchlist ─────────────────────────────────────────────────────────────
 
+    override fun getWatchlist(): Flow<List<WatchlistEntity>> = watchlistDao.getAll()
+
     override fun getWatchlistSymbols(): Flow<List<String>> =
         watchlistDao.getAll().map { list -> list.map { it.symbol } }
 
-    override suspend fun addToWatchlist(symbol: String) =
-        watchlistDao.insert(WatchlistEntity(symbol = symbol))
+    override suspend fun addToWatchlist(symbol: String, companyName: String) =
+        watchlistDao.insert(
+            WatchlistEntity(
+                symbol = normalizeSymbol(symbol),
+                companyName = companyName.ifBlank { normalizeSymbol(symbol) }
+            )
+        )
 
     override suspend fun removeFromWatchlist(symbol: String) =
-        watchlistDao.delete(symbol)
+        watchlistDao.delete(normalizeSymbol(symbol))
 
     override suspend fun isInWatchlist(symbol: String): Boolean =
-        watchlistDao.count(symbol) > 0
+        watchlistDao.contains(normalizeSymbol(symbol))
+
+    private fun normalizeSymbol(symbol: String): String =
+        symbol.trim().uppercase()
 
     // ── Alerts ────────────────────────────────────────────────────────────────
 

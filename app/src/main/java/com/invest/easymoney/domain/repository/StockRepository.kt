@@ -5,6 +5,7 @@ import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockSearchResult
+import com.invest.easymoney.data.local.entity.WatchlistEntity
 import com.invest.easymoney.util.Resource
 import kotlinx.coroutines.flow.Flow
 
@@ -17,8 +18,9 @@ interface StockRepository {
 
     suspend fun getPopularStocksFromApi(): Resource<List<String>>
     // Watchlist
+    fun getWatchlist(): Flow<List<WatchlistEntity>>
     fun getWatchlistSymbols(): Flow<List<String>>
-    suspend fun addToWatchlist(symbol: String)
+    suspend fun addToWatchlist(symbol: String, companyName: String)
     suspend fun removeFromWatchlist(symbol: String)
     suspend fun isInWatchlist(symbol: String): Boolean
 

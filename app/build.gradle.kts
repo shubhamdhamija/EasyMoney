@@ -27,6 +27,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "OPENAI_API_KEY", "\"${localProperties["OPENAI_API_KEY"] ?: ""}\"")
+        buildConfigField("String", "BACKEND_DEVICE_HOST", "\"${localProperties["BACKEND_DEVICE_HOST"] ?: "10.0.0.57"}\"")
+        buildConfigField("int", "BACKEND_PORT", "${localProperties["BACKEND_PORT"] ?: "8080"}")
     }
 
     buildTypes {
@@ -126,7 +128,12 @@ dependencies {
     testImplementation(libs.mockk)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.coroutines.test)
+    androidTestImplementation(libs.turbine)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
 
     implementation("com.patrykandpatrick.vico:compose:1.16.1")

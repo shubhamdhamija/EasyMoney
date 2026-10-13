@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,7 +35,8 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                modifier = Modifier.testTag("AlertsTopBar")
             )
         }
     ) { padding ->
@@ -42,7 +44,7 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
             is Resource.Loading -> Box(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
+            ) { CircularProgressIndicator(modifier = Modifier.testTag("AlertsLoadingIndicator")) }
 
             is Resource.Error -> Box(
                 Modifier.fillMaxSize().padding(padding),
@@ -53,8 +55,8 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
                 val alerts = (state as Resource.Success<List<Alert>>).data
                 if (alerts.isEmpty()) {
                     Box(
-                        Modifier.fillMaxSize().padding(padding),
-                        contentAlignment = Alignment.Center
+                        Modifier.fillMaxSize().padding(padding).testTag("AlertsEmptyState"),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -81,7 +83,7 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(padding),
+                        modifier = Modifier.fillMaxSize().padding(padding).testTag("AlertsLazyColumn"),
                         contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -101,7 +103,7 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
                         item {
                             Spacer(Modifier.height(8.dp))
                             Card(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().testTag("AlertsInfoCard"),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                                 ),
@@ -141,7 +143,7 @@ private fun AlertItem(alert: Alert, onDelete: () -> Unit) {
     val direction = if (isIncrease) "rises" else "drops"
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("AlertItem_${alert.symbol}"),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -166,7 +168,7 @@ private fun AlertItem(alert: Alert, onDelete: () -> Unit) {
                     )
                 }
             }
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = onDelete, modifier = Modifier.testTag("AlertDeleteButton_${alert.symbol}")) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete Alert",

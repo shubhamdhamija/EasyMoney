@@ -2,6 +2,7 @@ package com.invest.easymoney.ui.watchlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.invest.easymoney.data.local.entity.WatchlistEntity
 import com.invest.easymoney.domain.model.EarningsReport
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.UpcomingEarning
@@ -11,9 +12,11 @@ import com.invest.easymoney.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +25,13 @@ class WatchlistViewModel @Inject constructor(
     private val repository: StockRepository,
     private val backendRepository: BackendRepository
 ) : ViewModel() {
+
+    val watchlist: StateFlow<List<WatchlistEntity>> = repository.getWatchlist()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     private val _stocksState = MutableStateFlow<Resource<List<Stock>>>(Resource.Loading)
     val stocksState: StateFlow<Resource<List<Stock>>> = _stocksState
@@ -36,9 +46,9 @@ class WatchlistViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.getWatchlistSymbols()
-                .distinctUntilChanged()
-                .collect { symbols ->
+            watchlist
+                .collect { entities ->
+                    val symbols = entities.map { it.symbol }
                     _stocksState.value = Resource.Loading
                     _stocksState.value = if (symbols.isEmpty()) {
                         Resource.Success(emptyList())
@@ -87,7 +97,7 @@ class WatchlistViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            val current = (_stocksState.value as? Resource.Success)?.data?.map { it.symbol } ?: return@launch
+            val current = watchlist.value.map { it.symbol }
             if (current.isNotEmpty()) {
                 _stocksState.value = Resource.Loading
                 _stocksState.value = repository.fetchStocksForSymbols(current)

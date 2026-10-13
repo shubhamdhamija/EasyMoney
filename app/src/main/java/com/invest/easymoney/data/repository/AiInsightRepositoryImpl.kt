@@ -16,6 +16,7 @@ import com.invest.easymoney.domain.repository.AiInsightRepository
 import com.invest.easymoney.util.Resource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,7 +49,7 @@ class AiInsightRepositoryImpl @Inject constructor(
             }
         }
 
-        return runCatching {
+        return try {
             val prompt = buildInsightPrompt(symbol, stock, news)
             val response = openAiApi.chatCompletion(
                 OpenAiRequest(
@@ -66,10 +67,10 @@ class AiInsightRepositoryImpl @Inject constructor(
             )
 
             val content = response.choices?.firstOrNull()?.message?.content
-                ?: return NetworkResult.Error(IllegalStateException("Empty response from AI"))
+                ?: throw IllegalStateException("Empty response from AI")
 
             val parsed = parseInsight(content)
-                ?: return NetworkResult.Error(IllegalStateException("Failed to parse AI response"))
+                ?: throw IllegalStateException("Failed to parse AI response")
 
             val sentiment = parsed.sentiment?.lowercase()?.trim()
                 ?.takeIf { it in setOf("bullish", "bearish", "neutral") } ?: "neutral"
@@ -87,8 +88,8 @@ class AiInsightRepositoryImpl @Inject constructor(
             }
 
             NetworkResult.Success(insight)
-        }.getOrElse { e ->
-            if (isNetworkError(e)) {
+        } catch (e: Throwable) {
+            if (shouldUseFallback(e)) {
                 NetworkResult.Success(buildFallbackInsight(symbol, stock, news))
             } else {
                 NetworkResult.Error(IllegalStateException(mapApiError(e), e))
@@ -106,7 +107,7 @@ class AiInsightRepositoryImpl @Inject constructor(
             }
         }
 
-        return runCatching {
+        return try {
             val prompt = buildPicksPrompt(stocks)
             val response = openAiApi.chatCompletion(
                 OpenAiRequest(
@@ -124,10 +125,10 @@ class AiInsightRepositoryImpl @Inject constructor(
             )
 
             val content = response.choices?.firstOrNull()?.message?.content
-                ?: return Resource.Error("Empty response from AI")
+                ?: throw IllegalStateException("Empty response from AI")
 
             val parsed = parsePicks(content)
-                ?: return Resource.Error("Failed to parse AI picks response")
+                ?: throw IllegalStateException("Failed to parse AI picks response")
 
             val picks = parsed.picks
                 ?.filter { !it.symbol.isNullOrBlank() && !it.reason.isNullOrBlank() }
@@ -139,8 +140,8 @@ class AiInsightRepositoryImpl @Inject constructor(
             }
 
             Resource.Success(picks)
-        }.getOrElse { e ->
-            if (isNetworkError(e)) {
+        } catch (e: Throwable) {
+            if (shouldUseFallback(e)) {
                 Resource.Success(buildFallbackPicks(stocks))
             } else {
                 Resource.Error(mapApiError(e))
@@ -228,6 +229,29 @@ Respond with ONLY this JSON (no extra text):
             e is java.net.SocketTimeoutException ||
             e is java.net.UnknownHostException
     }
+
+    private fun isProviderServerError(e: Throwable): Boolean {
+        if (e is HttpException) {
+            return e.code() == 429 || e.code() in 500..599
+        }
+
+        val msg = e.message?.lowercase() ?: ""
+        return msg.contains("http 500") ||
+            msg.contains("http 502") ||
+            msg.contains("http 503") ||
+            msg.contains("http 504") ||
+            msg.contains("server error")
+    }
+
+    private fun isMalformedAiResponse(e: Throwable): Boolean {
+        val msg = e.message?.lowercase() ?: ""
+        return msg.contains("empty response from ai") ||
+            msg.contains("failed to parse ai response") ||
+            msg.contains("failed to parse ai picks response")
+    }
+
+    private fun shouldUseFallback(e: Throwable): Boolean =
+        isNetworkError(e) || isProviderServerError(e) || isMalformedAiResponse(e)
 
     private fun mapApiError(e: Throwable): String = when {
         e.message?.contains("429") == true -> "AI rate limit reached. Please try again in a moment."
