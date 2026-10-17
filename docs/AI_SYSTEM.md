@@ -114,3 +114,29 @@ The backend should return:
   `neutral`, or `insufficient`.
 - `evidenceSentiment` must not be presented as a guaranteed price prediction or
   investment recommendation.
+
+### No-Evidence Behavior
+
+When `evidence` is an empty array, insufficient evidence is already known.
+The backend must not call the LLM provider in this case. This avoids
+unnecessary latency and provider usage.
+
+The service returns a deterministic response:
+
+```json
+{
+  "symbol": "TSLA",
+  "direction": "decrease",
+  "evidenceSentiment": "insufficient",
+  "summary": "The available evidence is insufficient to reliably explain this movement.",
+  "factors": [],
+  "evidenceSufficient": false,
+  "disclaimer": "For informational purposes only."
+}
+```
+
+`symbol` comes from the validated request and `direction` is calculated by
+backend code. The current `POST /ai/explain` route already returns this
+response for empty evidence. The future explanation service must preserve this
+behavior and skip the provider call.
+

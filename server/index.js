@@ -24,10 +24,21 @@ const { buildFullContext } = require('./systemOrchestrator');
 const {
   stockExplanationRouter
 } = require('./routes/stockExplanationRoutes');
+const {
+  requestIdMiddleware
+} = require(
+  './middleware/requestId'
+);
+
+const {
+  errorHandler
+} = require(
+  './middleware/errorHandler'
+);
 
 const app = express();
 app.use(bodyParser.json());
-app.use('/ai/explain', stockExplanationRouter);
+app.use(requestIdMiddleware);
 
 function hasFunction(target, methodName) {
   return !!target && typeof target[methodName] === 'function';
@@ -224,7 +235,7 @@ app.post('/ai/copilot', async (req, res) => {
   }
 });
 
-// ── Phase 5: User Profile ─────────────────────────────────────────────────────
+// ── Phase 5: User Profile ──────────────────���──────────────────────────────────
 app.get('/user/profile/:userId', (req, res) => {
   try {
     const profile = userProfileService.getProfile(req.params.userId);
@@ -287,124 +298,11 @@ app.get('/ai/predict/:symbol', async (req, res) => {
   }
 });
 
+app.use('/ai/explain', stockExplanationRouter);
+
+// All routes above this line.
+app.use(errorHandler);
+
 const port = process.env.PORT || 8080;
 app.listen(port, '0.0.0.0', () => console.log('EasyMoney AI Server listening on', port));
-
-// ── New Endpoints ─────────────────────────────────────────────────────────────
-
-// Full AI context for a symbol (orchestrator)
-app.get('/ai/context/:symbol', async (req, res) => {
-  try {
-    const { symbol } = req.params;
-    const { userId = 'default' } = req.query;
-    const ctx = await buildFullContext(symbol.toUpperCase(), userId);
-    res.json({ ok: true, symbol: symbol.toUpperCase(), ...ctx });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// Upcoming earnings calendar — must be registered BEFORE the :symbol wildcard route
-app.get('/ai/earnings/upcoming', async (req, res) => {
-  try {
-    const today = new Date();
-    const from = req.query.from || today.toISOString().split('T')[0];
-    const toDate = new Date(today);
-    toDate.setDate(toDate.getDate() + 7);
-    const to = req.query.to || toDate.toISOString().split('T')[0];
-    const result = await earningsService.getUpcomingEarnings(from, to);
-    res.json({ ok: true, ...result });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// Historical earnings for a symbol
-app.get('/ai/earnings/:symbol', async (req, res) => {
-  try {
-    const result = await earningsService.getEarnings(req.params.symbol.toUpperCase());
-    res.json({ ok: true, ...result });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// Ingest earnings into RAG for a symbol
-app.post('/ai/earnings/ingest/:symbol', async (req, res) => {
-  try {
-    const result = await earningsService.ingestEarningsToRAG(req.params.symbol.toUpperCase());
-    res.json({ ok: true, ...result });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// Live market movers (gainers + losers + most active)
-app.get('/stocks/movers', (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit || '10', 10);
-    const data = hasFunction(moversService, 'getMovers')
-      ? moversService.getMovers(limit)
-      : { ok: true, gainers: [], losers: [], mostActive: [], updatedAt: null };
-    res.json({ ok: true, ...data });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-app.get('/stocks/gainers', (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit || '10', 10);
-    const gainers = hasFunction(moversService, 'getGainers') ? moversService.getGainers(limit) : [];
-    const updatedAt = hasFunction(moversService, 'getCacheAge') ? moversService.getCacheAge() : null;
-    res.json({ ok: true, gainers, updatedAt });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-app.get('/stocks/losers', (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit || '10', 10);
-    const losers = hasFunction(moversService, 'getLosers') ? moversService.getLosers(limit) : [];
-    const updatedAt = hasFunction(moversService, 'getCacheAge') ? moversService.getCacheAge() : null;
-    res.json({ ok: true, losers, updatedAt });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// ── Cron Jobs ─────────────────────────────────────────────────────────────────
-
-// Refresh gainers/losers every 5 minutes during market hours (Mon-Fri)
-cron.schedule('*/5 9-16 * * 1-5', async () => {
-  await invokeIfAvailable(moversService, 'updateMovers', [], 'moversService.updateMovers');
-});
-
-// Initial fetch on startup (non-blocking)
-invokeIfAvailable(moversService, 'updateMovers', [], 'moversService.updateMovers');
-
-// Ingest earnings for watchlist symbols daily at 6am
-cron.schedule('0 6 * * 1-5', async () => {
-  try {
-    const watchlist = process.env.SAMPLE_WATCHLIST
-      ? process.env.SAMPLE_WATCHLIST.split(',').map(s => s.trim()).filter(Boolean)
-      : ['AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMZN'];
-    console.log('[cron] Ingesting earnings for', watchlist);
-    for (const sym of watchlist) {
-      await invokeIfAvailable(
-        earningsService,
-        'ingestEarningsToRAG',
-        [sym],
-        `earningsService.ingestEarningsToRAG(${sym})`
-      );
-    }
-  } catch (e) {
-    console.error('[cron] earnings ingestion failed:', e.message);
-  }
-});
 
