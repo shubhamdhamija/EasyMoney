@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,6 +44,7 @@ import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
+import com.invest.easymoney.domain.model.StockExplanation
 import com.invest.easymoney.ui.charts.MPLineChart
 import com.invest.easymoney.ui.theme.GainGreen
 import com.invest.easymoney.ui.theme.LossRed
@@ -99,7 +99,6 @@ fun StockDetailScreen(
     val explainState by viewModel.explainState.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isInsightLoading by viewModel.isInsightLoading.collectAsStateWithLifecycle()
-    val isExplainLoading by viewModel.isExplainLoading.collectAsStateWithLifecycle()
     val isInWatchlist by viewModel.isInWatchlist.collectAsStateWithLifecycle()
 
 
@@ -118,7 +117,6 @@ fun StockDetailScreen(
                 is StockDetailViewModel.StockDetailEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
-                else -> {}
             }
         }
     }
@@ -241,7 +239,6 @@ fun StockDetailScreen(
                             item {
                                 ExplainMoveCard(
                                     state = explainState,
-                                    isLoading = isExplainLoading,
                                     onExplain = { viewModel.explainMove() },
                                     onDismiss = { viewModel.dismissExplain() }
                                 )
@@ -293,7 +290,7 @@ private fun PremiumHeroCard(
                         Text(stock.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.height(14.dp))
-                    Text("$${String.format("%.2f", stock.currentPrice)}", style = TradingTextStyles.PriceHero, fontWeight = FontWeight.Bold)
+                    Text("$${String.format(Locale.US, "%.2f", stock.currentPrice)}", style = TradingTextStyles.PriceHero, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(arrowIcon, contentDescription = null, tint = trendColor, modifier = Modifier.size(18.dp))
@@ -589,7 +586,7 @@ private fun FinancialRatiosExpandableCard(data: FinancialRatiosUi?, modifier: Mo
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text("Financial Ratios", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -1051,7 +1048,11 @@ private fun SetPriceAlertDialog(onDismissDialog: () -> Unit, onConfirm: (Float, 
 }
 
 @Composable
-private fun ExplainMoveCard(state: NetworkResult<String>?, isLoading: Boolean, onExplain: () -> Unit, onDismiss: () -> Unit) {
+private fun ExplainMoveCard(
+    state: ExplainMoveUiState,
+    onExplain: () -> Unit,
+    onDismiss: () -> Unit
+) {
     Card(modifier = Modifier.fillMaxWidth(), shape = TradingShapes.Card, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -1060,12 +1061,12 @@ private fun ExplainMoveCard(state: NetworkResult<String>?, isLoading: Boolean, o
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Why did it move?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
                 }
-                if (state != null && !isLoading) {
+                if (state !is ExplainMoveUiState.Idle && state !is ExplainMoveUiState.Loading) {
                     TextButton(onClick = onDismiss, contentPadding = PaddingValues(0.dp)) { Text("Clear", style = MaterialTheme.typography.labelSmall) }
                 }
             }
             when (state) {
-                null -> {
+                ExplainMoveUiState.Idle -> {
                     Text(
                         "Use AI + retrieved context to explain the drivers behind the stock’s recent move.",
                         style = MaterialTheme.typography.bodySmall,
@@ -1077,12 +1078,38 @@ private fun ExplainMoveCard(state: NetworkResult<String>?, isLoading: Boolean, o
                         Text("Explain This Move")
                     }
                 }
-                is NetworkResult.Error -> {
-                    Text("⚠️ ${state.throwable.message ?: "Unable to explain move"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                ExplainMoveUiState.Loading -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text("Retrieving context and generating explanation...", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                is ExplainMoveUiState.Error -> {
+                    Text(
+                        state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    state.requestId?.let { requestId ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Reference ID: $requestId",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.72f)
+                        )
+                    }
                     TextButton(onClick = onExplain, contentPadding = PaddingValues(0.dp)) { Text("Retry", style = MaterialTheme.typography.labelSmall) }
                 }
-                is NetworkResult.Success -> {
-                    Text(state.data, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                is ExplainMoveUiState.Success -> {
+                    StockExplanationContent(explanation = state.explanation)
+                    Text(
+                        "⚠️ AI-generated. Not financial advice.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.65f)
+                    )
+                }
+                is ExplainMoveUiState.InsufficientEvidence -> {
+                    StockExplanationInsufficientContent(explanation = state.explanation)
                     Text(
                         "⚠️ AI-generated. Not financial advice.",
                         style = MaterialTheme.typography.labelSmall,
@@ -1090,18 +1117,55 @@ private fun ExplainMoveCard(state: NetworkResult<String>?, isLoading: Boolean, o
                     )
                 }
             }
-            if (isLoading) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Text("Retrieving context and generating explanation...", style = MaterialTheme.typography.bodySmall)
-                }
-            }
         }
     }
 }
 
-private fun buildAnalystRatingUi(stock: Stock): AnalystRatingUi? = null
-private fun buildFinancialRatiosUi(stock: Stock): FinancialRatiosUi? = null
+@Composable
+private fun StockExplanationContent(explanation: StockExplanation) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = explanation.summary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer
+        )
+
+        if (explanation.factors.isNotEmpty()) {
+            explanation.factors.forEach { factor ->
+                Text(
+                    text = "• $factor",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.88f)
+                )
+            }
+        }
+
+        Text(
+            text = explanation.disclaimer,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.72f)
+        )
+    }
+}
+
+@Composable
+private fun StockExplanationInsufficientContent(explanation: StockExplanation) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = explanation.summary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer
+        )
+        Text(
+            text = explanation.disclaimer,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.72f)
+        )
+    }
+}
+
+private fun buildAnalystRatingUi(_stock: Stock): AnalystRatingUi? = null
+private fun buildFinancialRatiosUi(_stock: Stock): FinancialRatiosUi? = null
 
 private fun computeValuationHealth(peRatio: String?): ValuationHealth {
     val pe = parseNumericValue(peRatio)

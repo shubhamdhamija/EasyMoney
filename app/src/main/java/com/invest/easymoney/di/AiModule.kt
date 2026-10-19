@@ -57,6 +57,8 @@ abstract class AiModule {
         @Provides
         @Singleton
         fun provideOpenAiApiService(@OpenAiRetrofit retrofit: Retrofit): OpenAiApiService =
+            // Temporary: stock movement explanation now routes through the backend,
+            // while stock insight / AI picks still use the legacy direct provider path.
             retrofit.create(OpenAiApiService::class.java)
     }
 }

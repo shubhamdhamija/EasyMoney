@@ -1,16 +1,28 @@
 package com.invest.easymoney.data.repository
 
+import com.google.gson.Gson
 import com.invest.easymoney.data.api.BackendApiService
 import com.invest.easymoney.data.api.WatchlistChangePayload
+import com.invest.easymoney.data.api.dto.StockEvidenceRequest
+import com.invest.easymoney.data.api.dto.StockExplanationErrorResponse
+import com.invest.easymoney.data.api.dto.StockExplanationApiResponse
+import com.invest.easymoney.data.api.dto.StockExplanationRequest
 import com.invest.easymoney.domain.model.EarningsReport
+import com.invest.easymoney.domain.model.EvidenceSentiment
 import com.invest.easymoney.domain.model.NetworkResult
+import com.invest.easymoney.domain.model.News
+import com.invest.easymoney.domain.model.MovementDirection
+import com.invest.easymoney.domain.model.Stock
+import com.invest.easymoney.domain.model.StockExplanation
 import com.invest.easymoney.domain.model.UpcomingEarning
 import com.invest.easymoney.domain.repository.BackendRepository
 import com.invest.easymoney.util.Resource
+import retrofit2.HttpException
 import javax.inject.Inject
 
 class BackendRepositoryImpl @Inject constructor(
-    private val backendApiService: BackendApiService
+    private val backendApiService: BackendApiService,
+    private val gson: Gson
 ) : BackendRepository {
 
     override suspend fun notifyWatchlistChange(deviceId: String, symbol: String, action: String) {
@@ -24,17 +36,60 @@ class BackendRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun explainMove(symbol: String): NetworkResult<String> {
+    override suspend fun explainMove(stock: Stock, news: List<News>): NetworkResult<StockExplanation> {
         return try {
-            val response = backendApiService.explainMove(symbol)
-            if (response.ok && response.explanation != null) {
-                NetworkResult.Success(response.explanation)
+            val response = backendApiService.explainStockMovement(createExplanationRequest(stock, news))
+            if (response.ok) {
+                NetworkResult.Success(response.toDomain())
             } else {
-                NetworkResult.Error(IllegalStateException(response.error ?: "Unknown error"))
+                val errorMessage = response.error?.message ?: "Unknown error"
+                NetworkResult.Error(IllegalStateException(errorMessage))
             }
+        } catch (e: IllegalArgumentException) {
+            NetworkResult.Error(e)
+        } catch (e: IllegalStateException) {
+            NetworkResult.Error(e)
+        } catch (e: HttpException) {
+            NetworkResult.Error(mapBackendHttpException(e))
         } catch (e: Exception) {
             NetworkResult.Error(e)
         }
+    }
+
+    private fun createExplanationRequest(stock: Stock, news: List<News>): StockExplanationRequest {
+        return StockExplanationRequest(
+            symbol = stock.symbol.trim().uppercase(),
+            companyName = stock.name.takeIf(String::isNotBlank),
+            priceChangePercent = stock.changePercent,
+            marketChangePercent = null,
+            dayLow = stock.lowPrice,
+            dayHigh = stock.highPrice,
+            evidence = news.take(7).map { article ->
+                StockEvidenceRequest(
+                    type = "news",
+                    headline = article.headline,
+                    source = article.source.takeIf(String::isNotBlank)
+                )
+            }
+        )
+    }
+
+    private fun mapBackendHttpException(exception: HttpException): Throwable {
+        val errorBody = exception.response()?.errorBody()?.string().orEmpty()
+        val parsed = runCatching {
+            gson.fromJson(errorBody, StockExplanationErrorResponse::class.java)
+        }.getOrNull()
+
+        val message = parsed?.error?.message
+            ?: exception.message()
+            ?: "Unable to explain move"
+
+        return BackendApiException(
+            code = parsed?.error?.code,
+            requestId = parsed?.requestId,
+            message = message,
+            cause = exception
+        )
     }
 
     override suspend fun getEarningsReport(symbol: String): Resource<EarningsReport> {
@@ -86,4 +141,46 @@ class BackendRepositoryImpl @Inject constructor(
         }
     }
 }
+
+class BackendApiException(
+    val code: String?,
+    val requestId: String?,
+    message: String,
+    cause: Throwable? = null
+) : Exception(message, cause)
+
+private fun StockExplanationApiResponse.toDomain(): StockExplanation {
+    val value = requireNotNull(explanation) {
+        "Missing stock explanation"
+    }
+
+    return StockExplanation(
+        symbol = value.symbol,
+        direction = value.direction.toMovementDirection(),
+        evidenceSentiment = value.evidenceSentiment.toEvidenceSentiment(),
+        summary = value.summary,
+        factors = value.factors,
+        evidenceSufficient = value.evidenceSufficient,
+        disclaimer = value.disclaimer,
+        requestId = requestId
+    )
+}
+
+private fun String.toMovementDirection(): MovementDirection =
+    when (trim().lowercase()) {
+        "increase" -> MovementDirection.INCREASE
+        "decrease" -> MovementDirection.DECREASE
+        "unchanged" -> MovementDirection.UNCHANGED
+        else -> throw IllegalArgumentException("Unsupported movement direction: $this")
+    }
+
+private fun String.toEvidenceSentiment(): EvidenceSentiment =
+    when (trim().lowercase()) {
+        "positive" -> EvidenceSentiment.POSITIVE
+        "negative" -> EvidenceSentiment.NEGATIVE
+        "mixed" -> EvidenceSentiment.MIXED
+        "neutral" -> EvidenceSentiment.NEUTRAL
+        "insufficient" -> EvidenceSentiment.INSUFFICIENT
+        else -> throw IllegalArgumentException("Unsupported evidence sentiment: $this")
+    }
 

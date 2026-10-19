@@ -23,3 +23,11 @@ local.properties
 *.keystore
 key.properties
 
+# Environment files / secrets
+.env
+.env.*
+!.env.example
+server/.env
+
+# Generated evaluation artifacts
+server/evals/stockExplanationReport.json

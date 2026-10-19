@@ -1,11 +1,12 @@
 package com.invest.easymoney.data.api
 
 import com.invest.easymoney.data.api.dto.EarningsReportDto
+import com.invest.easymoney.data.api.dto.StockExplanationApiResponse
+import com.invest.easymoney.data.api.dto.StockExplanationRequest
 import com.invest.easymoney.data.api.dto.UpcomingEarningDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
-import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface BackendApiService {
@@ -18,14 +19,14 @@ interface BackendApiService {
     /**
      * Get explanation for why a stock moved
      */
-    @GET("ai/explain/{symbol}")
-    suspend fun explainMove(@Path("symbol") symbol: String): ExplainMoveResponse
+    @POST("ai/explain")
+    suspend fun explainStockMovement(@Body request: StockExplanationRequest): StockExplanationApiResponse
 
     /**
      * Get earnings report for a symbol
      */
     @GET("ai/earnings/{symbol}")
-    suspend fun getEarningsReport(@Path("symbol") symbol: String): EarningsResponse
+    suspend fun getEarningsReport(@retrofit2.http.Path("symbol") symbol: String): EarningsResponse
 
     /**
      * Get upcoming earnings
@@ -43,11 +44,6 @@ data class WatchlistChangePayload(
     val action: String
 )
 
-data class ExplainMoveResponse(
-    val ok: Boolean,
-    val explanation: String? = null,
-    val error: String? = null
-)
 
 data class EarningsResponse(
     val ok: Boolean,

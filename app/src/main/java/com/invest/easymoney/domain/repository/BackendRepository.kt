@@ -2,6 +2,9 @@ package com.invest.easymoney.domain.repository
 
 import com.invest.easymoney.domain.model.EarningsReport
 import com.invest.easymoney.domain.model.NetworkResult
+import com.invest.easymoney.domain.model.News
+import com.invest.easymoney.domain.model.StockExplanation
+import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.UpcomingEarning
 import com.invest.easymoney.util.Resource
 
@@ -15,7 +18,7 @@ interface BackendRepository {
     /**
      * Get an explanation for why a stock moved.
      */
-    suspend fun explainMove(symbol: String): NetworkResult<String>
+    suspend fun explainMove(stock: Stock, news: List<News>): NetworkResult<StockExplanation>
 
     /**
      * Get earnings report for a symbol.

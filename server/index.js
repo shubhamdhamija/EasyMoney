@@ -22,7 +22,10 @@ const earningsService = require('./earningsService');
 const moversService = require('./moversService');
 const { buildFullContext } = require('./systemOrchestrator');
 const {
-  stockExplanationRouter
+  createAppDependencies
+} = require('./appDependencies');
+const {
+  createStockExplanationRouter
 } = require('./routes/stockExplanationRoutes');
 const {
   requestIdMiddleware
@@ -37,8 +40,24 @@ const {
 );
 
 const app = express();
+const dependencies =
+  createAppDependencies({
+    env:
+      process.env,
+
+    fetchImpl:
+      globalThis.fetch
+  });
+
 app.use(bodyParser.json());
 app.use(requestIdMiddleware);
+app.use(
+  '/ai/explain',
+  createStockExplanationRouter({
+    stockExplanationService:
+      dependencies.stockExplanationService
+  })
+);
 
 function hasFunction(target, methodName) {
   return !!target && typeof target[methodName] === 'function';
@@ -298,7 +317,6 @@ app.get('/ai/predict/:symbol', async (req, res) => {
   }
 });
 
-app.use('/ai/explain', stockExplanationRouter);
 
 // All routes above this line.
 app.use(errorHandler);
