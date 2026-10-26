@@ -58,6 +58,22 @@ class HomeSearchFirstTopBarTest {
         assertTrue(clicked)
     }
 
+    @Test
+    fun articleSearchButtonTriggersNavigationCallback() {
+        var clicked = false
+        composeRule.setContent {
+            MaterialTheme {
+                HomeSearchFirstTopBar(
+                    isRefreshing = false,
+                    onRefresh = {},
+                    onArticleSearchClick = { clicked = true }
+                )
+            }
+        }
+        composeRule.onNodeWithTag("TopBar_ArticleSearchButton").performClick()
+        assertTrue(clicked)
+    }
+
     @Composable
     private fun ThemedTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
         MaterialTheme {
@@ -68,4 +84,3 @@ class HomeSearchFirstTopBarTest {
         }
     }
 }
-

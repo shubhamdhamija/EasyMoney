@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -45,6 +46,7 @@ import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
+import com.invest.easymoney.domain.model.StockExplanation
 import com.invest.easymoney.ui.charts.MPLineChart
 import com.invest.easymoney.ui.theme.GainGreen
 import com.invest.easymoney.ui.theme.LossRed
@@ -59,6 +61,23 @@ private enum class PremiumSection(val label: String) {
     AI("AI Insight"),
     NEWS("News")
 }
+
+/** Test tags for the Stock Detail screen. */
+object StockDetailTestTags {
+    const val LIST = "stock_detail_list"
+    const val EXPLAIN_MOVE_CHIP = "explain_move_chip"
+    const val LEGACY_AI_INSIGHT_RETRY = "legacy_ai_insight_retry"
+    const val TAB_OVERVIEW = "stock_detail_tab_overview"
+    const val TAB_AI_INSIGHT = "stock_detail_tab_ai_insight"
+    const val TAB_NEWS = "stock_detail_tab_news"
+}
+
+private val PremiumSection.testTagName: String
+    get() = when (this) {
+        PremiumSection.OVERVIEW -> StockDetailTestTags.TAB_OVERVIEW
+        PremiumSection.AI -> StockDetailTestTags.TAB_AI_INSIGHT
+        PremiumSection.NEWS -> StockDetailTestTags.TAB_NEWS
+    }
 
 private enum class ValuationHealth(val label: String, val color: Color) {
     CHEAP("Cheap", GainGreen),
@@ -99,14 +118,16 @@ fun StockDetailScreen(
     val explainState by viewModel.explainState.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isInsightLoading by viewModel.isInsightLoading.collectAsStateWithLifecycle()
-    val isExplainLoading by viewModel.isExplainLoading.collectAsStateWithLifecycle()
     val isInWatchlist by viewModel.isInWatchlist.collectAsStateWithLifecycle()
 
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showAlertDialog by remember { mutableStateOf(false) }
     var webViewUrl by remember { mutableStateOf<String?>(null) }
-    var selectedSection by remember { mutableStateOf(PremiumSection.OVERVIEW) }
+    // Saved by name so the selected tab survives activity/configuration recreation.
+    var selectedSectionName by rememberSaveable { mutableStateOf(PremiumSection.OVERVIEW.name) }
+    val selectedSection = PremiumSection.entries.firstOrNull { it.name == selectedSectionName }
+        ?: PremiumSection.OVERVIEW
 
     if (webViewUrl != null) {
         WebViewBottomSheet(url = webViewUrl!!, onDismiss = { webViewUrl = null })
@@ -118,7 +139,6 @@ fun StockDetailScreen(
                 is StockDetailViewModel.StockDetailEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
-                else -> {}
             }
         }
     }
@@ -193,7 +213,7 @@ fun StockDetailScreen(
                     val financialRatiosUi = buildFinancialRatiosUi(stock)
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier.fillMaxSize().padding(padding).testTag(StockDetailTestTags.LIST),
                     contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -203,7 +223,12 @@ fun StockDetailScreen(
                             isInWatchlist = isInWatchlist,
                             onToggleWatchlist = { viewModel.toggleWatchlist() },
                             onSetAlert = { showAlertDialog = true },
-                            onExplainMove = { viewModel.explainMove() }
+                            onExplainMove = {
+                                // Show the result where it will appear. Selecting the tab alone
+                                // never starts a request; only this explicit action does.
+                                selectedSectionName = PremiumSection.AI.name
+                                viewModel.explainMove()
+                            }
                         )
                     }
                     item {
@@ -217,7 +242,7 @@ fun StockDetailScreen(
                     stickyHeader {
                         StickySectionTabs(
                             selected = selectedSection,
-                            onSelected = { selectedSection = it }
+                            onSelected = { selectedSectionName = it.name }
                         )
                     }
                     when (selectedSection) {
@@ -241,7 +266,6 @@ fun StockDetailScreen(
                             item {
                                 ExplainMoveCard(
                                     state = explainState,
-                                    isLoading = isExplainLoading,
                                     onExplain = { viewModel.explainMove() },
                                     onDismiss = { viewModel.dismissExplain() }
                                 )
@@ -293,7 +317,7 @@ private fun PremiumHeroCard(
                         Text(stock.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.height(14.dp))
-                    Text("$${String.format("%.2f", stock.currentPrice)}", style = TradingTextStyles.PriceHero, fontWeight = FontWeight.Bold)
+                    Text("$${String.format(Locale.US, "%.2f", stock.currentPrice)}", style = TradingTextStyles.PriceHero, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(arrowIcon, contentDescription = null, tint = trendColor, modifier = Modifier.size(18.dp))
@@ -338,6 +362,7 @@ private fun PremiumHeroCard(
                 )
                 AssistChip(
                     onClick = onExplainMove,
+                    modifier = Modifier.testTag(StockDetailTestTags.EXPLAIN_MOVE_CHIP),
                     label = { Text("Explain Move") },
                     leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     shape = TradingShapes.Pill
@@ -406,6 +431,7 @@ private fun StickySectionTabs(selected: PremiumSection, onSelected: (PremiumSect
                 FilterChip(
                     selected = selected == section,
                     onClick = { onSelected(section) },
+                    modifier = Modifier.testTag(section.testTagName),
                     label = { Text(section.label, fontWeight = if (selected == section) FontWeight.SemiBold else FontWeight.Medium) },
                     shape = TradingShapes.Pill,
                     colors = FilterChipDefaults.filterChipColors(
@@ -589,7 +615,7 @@ private fun FinancialRatiosExpandableCard(data: FinancialRatiosUi?, modifier: Mo
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text("Financial Ratios", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -861,7 +887,11 @@ private fun AiInsightCard(insightState: NetworkResult<StockInsight>?, isLoading:
                 }
                 insightState is NetworkResult.Error -> {
                     Text("⚠️ ${insightState.throwable.message ?: "Unable to load insight"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = onRetry, contentPadding = PaddingValues(0.dp)) {
+                    TextButton(
+                        onClick = onRetry,
+                        modifier = Modifier.testTag(StockDetailTestTags.LEGACY_AI_INSIGHT_RETRY),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
                         Text("Retry", style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -1050,58 +1080,8 @@ private fun SetPriceAlertDialog(onDismissDialog: () -> Unit, onConfirm: (Float, 
     )
 }
 
-@Composable
-private fun ExplainMoveCard(state: NetworkResult<String>?, isLoading: Boolean, onExplain: () -> Unit, onDismiss: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = TradingShapes.Card, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Why did it move?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                }
-                if (state != null && !isLoading) {
-                    TextButton(onClick = onDismiss, contentPadding = PaddingValues(0.dp)) { Text("Clear", style = MaterialTheme.typography.labelSmall) }
-                }
-            }
-            when (state) {
-                null -> {
-                    Text(
-                        "Use AI + retrieved context to explain the drivers behind the stock’s recent move.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
-                    )
-                    Button(onClick = onExplain, modifier = Modifier.fillMaxWidth(), shape = TradingShapes.Input, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Explain This Move")
-                    }
-                }
-                is NetworkResult.Error -> {
-                    Text("⚠️ ${state.throwable.message ?: "Unable to explain move"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = onExplain, contentPadding = PaddingValues(0.dp)) { Text("Retry", style = MaterialTheme.typography.labelSmall) }
-                }
-                is NetworkResult.Success -> {
-                    Text(state.data, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                    Text(
-                        "⚠️ AI-generated. Not financial advice.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.65f)
-                    )
-                }
-            }
-            if (isLoading) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Text("Retrieving context and generating explanation...", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-    }
-}
-
-private fun buildAnalystRatingUi(stock: Stock): AnalystRatingUi? = null
-private fun buildFinancialRatiosUi(stock: Stock): FinancialRatiosUi? = null
+private fun buildAnalystRatingUi(_stock: Stock): AnalystRatingUi? = null
+private fun buildFinancialRatiosUi(_stock: Stock): FinancialRatiosUi? = null
 
 private fun computeValuationHealth(peRatio: String?): ValuationHealth {
     val pe = parseNumericValue(peRatio)

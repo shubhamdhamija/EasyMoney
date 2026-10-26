@@ -13,6 +13,7 @@ import com.invest.easymoney.domain.model.StockInsight
 import com.invest.easymoney.domain.repository.AiInsightRepository
 import com.invest.easymoney.domain.repository.BackendRepository
 import com.invest.easymoney.domain.repository.StockRepository
+import com.invest.easymoney.data.repository.BackendApiException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -43,17 +44,14 @@ class StockDetailViewModel @Inject constructor(
     private val _insightState = MutableStateFlow<NetworkResult<StockInsight>?>(null)
     val insightState: StateFlow<NetworkResult<StockInsight>?> = _insightState
 
-    private val _explainState = MutableStateFlow<NetworkResult<String>?>(null)
-    val explainState: StateFlow<NetworkResult<String>?> = _explainState
+    private val _explainState = MutableStateFlow<ExplainMoveUiState>(ExplainMoveUiState.Idle)
+    val explainState: StateFlow<ExplainMoveUiState> = _explainState
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
 
     private val _isInsightLoading = MutableStateFlow(false)
     val isInsightLoading: StateFlow<Boolean> = _isInsightLoading
-
-    private val _isExplainLoading = MutableStateFlow(false)
-    val isExplainLoading: StateFlow<Boolean> = _isExplainLoading
 
     private val _isInWatchlist = MutableStateFlow(false)
     val isInWatchlist: StateFlow<Boolean> = _isInWatchlist
@@ -149,19 +147,47 @@ class StockDetailViewModel @Inject constructor(
     }
 
     fun explainMove() {
-        if (_isExplainLoading.value) return
+        if (_explainState.value is ExplainMoveUiState.Loading) return
         viewModelScope.launch {
-            _isExplainLoading.value = true
+            _explainState.value = ExplainMoveUiState.Loading
             try {
-                _explainState.value = backendRepository.explainMove(symbol)
+                val stock = (_stockState.value as? NetworkResult.Success)?.data
+                if (stock == null) {
+                    _explainState.value = ExplainMoveUiState.Error(
+                        message = "AI explanation requires stock data"
+                    )
+                    return@launch
+                }
+
+                val news = (_newsState.value as? NetworkResult.Success)?.data ?: emptyList()
+                when (val result = backendRepository.explainMove(stock, news)) {
+                    is NetworkResult.Success -> {
+                        val explanation = result.data
+                        _explainState.value = if (explanation.evidenceSufficient) {
+                            ExplainMoveUiState.Success(explanation)
+                        } else {
+                            ExplainMoveUiState.InsufficientEvidence(explanation)
+                        }
+                    }
+
+                    is NetworkResult.Error -> {
+                        val requestId = (result.throwable as? BackendApiException)?.requestId
+                        _explainState.value = ExplainMoveUiState.Error(
+                            message = result.throwable.message ?: "Explanation unavailable",
+                            requestId = requestId
+                        )
+                    }
+                }
             } finally {
-                _isExplainLoading.value = false
+                if (_explainState.value is ExplainMoveUiState.Loading) {
+                    _explainState.value = ExplainMoveUiState.Idle
+                }
             }
         }
     }
 
     fun dismissExplain() {
-        _explainState.value = null
+        _explainState.value = ExplainMoveUiState.Idle
     }
 }
 

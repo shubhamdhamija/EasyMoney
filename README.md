@@ -35,6 +35,9 @@ EasyMoney/
 - **Trending**: Popular stocks
 - **AI Picks**: AI-powered stock recommendations
 - **Search**: Quick stock symbol search
+- **Article Search**: Search market news across stocks with suggested topics,
+  Top Hits, highlighted keywords, and a past-week filter. Open the article icon
+  in the Home top bar. See [implementation and Apple Notes evidence](docs/ARTICLE_SEARCH.md).
 
 ### Stock Details
 - Full company information
@@ -223,4 +226,3 @@ For issues or questions:
 ---
 
 **Built with ❤️ using Kotlin, Compose, and Node.js**
-
