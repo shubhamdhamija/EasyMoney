@@ -6,8 +6,6 @@ import com.invest.easymoney.domain.model.Stock
 object Constants {
     const val BASE_URL = "https://query1.finance.yahoo.com/"
 
-    // Free, keyless OpenAI-compatible AI endpoint (Pollinations.ai)
-    const val OPENAI_BASE_URL = "https://text.pollinations.ai/"
 
     // EasyMoney backend server (auto-detects emulator vs physical device)
     val BACKEND_BASE_URL: String

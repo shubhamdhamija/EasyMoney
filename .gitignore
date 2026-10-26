@@ -30,4 +30,11 @@ key.properties
 server/.env
 
 # Generated evaluation artifacts
-server/evals/stockExplanationReport.json
+server/evals/stockExplanationReport.fake.json
+server/evals/stockExplanationReport.live.json
+server/evals/stockExplanationReport.live.*.json
+server/evals/stockInsightReport.fake.json
+server/evals/stockInsightReport.live.json
+server/evals/stockInsightReport.live.*.json
+server/evals/stockPicksReport.*.json
+explanation_*.png

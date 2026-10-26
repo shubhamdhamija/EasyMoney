@@ -155,16 +155,21 @@ private fun StockExplanationApiResponse.toDomain(): StockExplanation {
     }
 
     return StockExplanation(
-        symbol = value.symbol,
+        symbol = value.symbol.trim().uppercase(),
         direction = value.direction.toMovementDirection(),
         evidenceSentiment = value.evidenceSentiment.toEvidenceSentiment(),
-        summary = value.summary,
-        factors = value.factors,
+        summary = value.summary.trim(),
+        factors = value.factors
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .take(MAX_EXPLANATION_FACTORS),
         evidenceSufficient = value.evidenceSufficient,
-        disclaimer = value.disclaimer,
+        disclaimer = value.disclaimer.trim(),
         requestId = requestId
     )
 }
+
+private const val MAX_EXPLANATION_FACTORS = 3
 
 private fun String.toMovementDirection(): MovementDirection =
     when (trim().lowercase()) {

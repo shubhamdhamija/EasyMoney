@@ -8,7 +8,11 @@
     "dev": "nodemon index.js",
     "test": "node --test",
     "eval:fake": "AI_EVAL_MODE=fake node evals/runStockExplanationEvals.js",
-    "eval:live": "AI_EVAL_MODE=live node evals/runStockExplanationEvals.js"
+    "eval:live": "AI_EVAL_MODE=live node evals/runStockExplanationEvals.js",
+    "eval:insight:fake": "AI_EVAL_MODE=fake node evals/runStockInsightEvals.js",
+    "eval:insight:live": "AI_EVAL_MODE=live node evals/runStockInsightEvals.js",
+    "eval:picks:fake": "AI_EVAL_MODE=fake node evals/runStockPicksEvals.js",
+    "eval:picks:live": "AI_EVAL_MODE=live node evals/runStockPicksEvals.js"
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^3.0.0",

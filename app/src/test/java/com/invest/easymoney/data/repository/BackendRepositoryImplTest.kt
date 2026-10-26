@@ -217,6 +217,119 @@ class BackendRepositoryImplTest {
         assertEquals("abc", throwable.requestId)
     }
 
+    @Test
+    fun `factors are trimmed blanks removed and limited to three`() = runTest {
+        coEvery {
+            backendApiService.explainStockMovement(any())
+        } returns StockExplanationApiResponse(
+            ok = true,
+            explanation = StockExplanationResponse(
+                symbol = "AAPL",
+                direction = "increase",
+                evidenceSentiment = "positive",
+                summary = "Summary.",
+                factors = listOf("  One  ", "", "   ", "Two", "Three", "Four", "Five"),
+                evidenceSufficient = true,
+                disclaimer = "For informational purposes only."
+            ),
+            requestId = "req-factors"
+        )
+
+        val result = repository.explainMove(sampleStock(), emptyList())
+
+        assertTrue(result is NetworkResult.Success)
+        assertEquals(
+            listOf("One", "Two", "Three"),
+            (result as NetworkResult.Success).data.factors
+        )
+    }
+
+    @Test
+    fun `text fields are trimmed and the symbol is normalised`() = runTest {
+        coEvery {
+            backendApiService.explainStockMovement(any())
+        } returns StockExplanationApiResponse(
+            ok = true,
+            explanation = StockExplanationResponse(
+                symbol = " aapl ",
+                direction = " Increase ",
+                evidenceSentiment = " POSITIVE ",
+                summary = "  Padded summary.  ",
+                factors = emptyList(),
+                evidenceSufficient = true,
+                disclaimer = "  For informational purposes only.  "
+            ),
+            requestId = "req-trim"
+        )
+
+        val result = repository.explainMove(sampleStock(), emptyList())
+
+        assertTrue(result is NetworkResult.Success)
+        val explanation = (result as NetworkResult.Success).data
+        assertEquals("AAPL", explanation.symbol)
+        assertEquals(MovementDirection.INCREASE, explanation.direction)
+        assertEquals(EvidenceSentiment.POSITIVE, explanation.evidenceSentiment)
+        assertEquals("Padded summary.", explanation.summary)
+        assertEquals("For informational purposes only.", explanation.disclaimer)
+    }
+
+    @Test
+    fun `insufficient evidence response is preserved`() = runTest {
+        coEvery {
+            backendApiService.explainStockMovement(any())
+        } returns StockExplanationApiResponse(
+            ok = true,
+            explanation = StockExplanationResponse(
+                symbol = "NVDA",
+                direction = "increase",
+                evidenceSentiment = "insufficient",
+                summary = "The available evidence is insufficient to reliably explain this movement.",
+                factors = emptyList(),
+                evidenceSufficient = false,
+                disclaimer = "For informational purposes only."
+            ),
+            requestId = "req-insufficient"
+        )
+
+        val result = repository.explainMove(sampleStock(), emptyList())
+
+        assertTrue(result is NetworkResult.Success)
+        val explanation = (result as NetworkResult.Success).data
+        assertEquals(false, explanation.evidenceSufficient)
+        assertEquals(EvidenceSentiment.INSUFFICIENT, explanation.evidenceSentiment)
+        assertTrue(explanation.factors.isEmpty())
+    }
+
+    @Test
+    fun `decrease and unchanged directions are mapped`() = runTest {
+        coEvery {
+            backendApiService.explainStockMovement(any())
+        } returns structuredResponse(direction = "decrease", sentiment = "negative")
+
+        val decrease = repository.explainMove(sampleStock(), emptyList())
+        assertEquals(
+            MovementDirection.DECREASE,
+            (decrease as NetworkResult.Success).data.direction
+        )
+
+        coEvery {
+            backendApiService.explainStockMovement(any())
+        } returns structuredResponse(direction = "unchanged", sentiment = "neutral")
+
+        val unchanged = repository.explainMove(sampleStock(), emptyList())
+        assertEquals(
+            MovementDirection.UNCHANGED,
+            (unchanged as NetworkResult.Success).data.direction
+        )
+    }
+
+    @Test
+    fun `relative performance is not invented by the Android client`() {
+        val fields = StockExplanation::class.java.declaredFields.map { it.name }
+
+        assertTrue(fields.none { it.contains("relative", ignoreCase = true) })
+    }
+
     private fun structuredResponse(
         direction: String = "increase",
         sentiment: String = "positive",

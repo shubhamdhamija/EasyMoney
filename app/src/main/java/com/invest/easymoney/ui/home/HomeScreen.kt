@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
@@ -68,6 +69,7 @@ enum class HomeTab(val title: String) {
 @Composable
 fun HomeScreen(
     onStockClick: (String) -> Unit,
+    onArticleSearchClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -105,7 +107,8 @@ fun HomeScreen(
         topBar = {
             HomeSearchFirstTopBar(
                 isRefreshing = stocksState is Resource.Loading,
-                onRefresh = { viewModel.onIntent(HomeIntent.LoadStocks) }
+                onRefresh = { viewModel.onIntent(HomeIntent.LoadStocks) },
+                onArticleSearchClick = onArticleSearchClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -272,7 +275,11 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
+fun HomeSearchFirstTopBar(
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onArticleSearchClick: () -> Unit = {}
+) {
     TopAppBar(
         title = {
             Column {
@@ -285,6 +292,12 @@ fun HomeSearchFirstTopBar(isRefreshing: Boolean, onRefresh: () -> Unit) {
             }
         },
         actions = {
+            IconButton(
+                onClick = onArticleSearchClick,
+                modifier = Modifier.testTag("TopBar_ArticleSearchButton")
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "Search articles")
+            }
             if (isRefreshing) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp).padding(end = 6.dp).testTag("TopBar_LoadingIndicator"),

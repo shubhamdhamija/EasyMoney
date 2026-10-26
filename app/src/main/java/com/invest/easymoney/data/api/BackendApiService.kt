@@ -3,6 +3,10 @@ package com.invest.easymoney.data.api
 import com.invest.easymoney.data.api.dto.EarningsReportDto
 import com.invest.easymoney.data.api.dto.StockExplanationApiResponse
 import com.invest.easymoney.data.api.dto.StockExplanationRequest
+import com.invest.easymoney.data.api.dto.StockInsightApiResponse
+import com.invest.easymoney.data.api.dto.StockInsightRequest
+import com.invest.easymoney.data.api.dto.StockPicksApiResponse
+import com.invest.easymoney.data.api.dto.StockPicksRequest
 import com.invest.easymoney.data.api.dto.UpcomingEarningDto
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -21,6 +25,18 @@ interface BackendApiService {
      */
     @POST("ai/explain")
     suspend fun explainStockMovement(@Body request: StockExplanationRequest): StockExplanationApiResponse
+
+    /**
+     * Structured stock insight (replaces the legacy direct-provider call)
+     */
+    @POST("ai/stock-insight")
+    suspend fun getStockInsight(@Body request: StockInsightRequest): StockInsightApiResponse
+
+    /**
+     * Notable stocks (market highlights) from a supplied stock set
+     */
+    @POST("ai/picks")
+    suspend fun getAiPicks(@Body request: StockPicksRequest): StockPicksApiResponse
 
     /**
      * Get earnings report for a symbol

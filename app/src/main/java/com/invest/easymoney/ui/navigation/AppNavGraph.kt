@@ -28,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.invest.easymoney.ui.aihub.AiHubScreen
 import com.invest.easymoney.ui.alerts.AlertsScreen
+import com.invest.easymoney.ui.articles.ArticleSearchScreen
 import com.invest.easymoney.ui.detail.StockDetailScreen
 import com.invest.easymoney.ui.detail.StockDetailViewModel
 import com.invest.easymoney.ui.home.HomeScreen
@@ -64,8 +65,14 @@ fun AppNavGraph() {
                 HomeScreen(
                     onStockClick = { symbol ->
                         navController.navigate("detail/$symbol")
+                    },
+                    onArticleSearchClick = {
+                        navController.navigate("articles")
                     }
                 )
+            }
+            composable("articles") {
+                ArticleSearchScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Watchlist.route) {
                 WatchlistScreen(

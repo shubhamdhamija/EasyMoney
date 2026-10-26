@@ -21,12 +21,20 @@ const predictionEngine = require('./predictionEngine');
 const earningsService = require('./earningsService');
 const moversService = require('./moversService');
 const { buildFullContext } = require('./systemOrchestrator');
+const { createArticleSearchService } = require('./services/articleSearchService');
+const { createArticleSearchRouter } = require('./routes/articleSearchRoutes');
 const {
   createAppDependencies
 } = require('./appDependencies');
 const {
   createStockExplanationRouter
 } = require('./routes/stockExplanationRoutes');
+const {
+  createStockInsightRouter
+} = require('./routes/stockInsightRoutes');
+const {
+  createStockPicksRouter
+} = require('./routes/stockPicksRoutes');
 const {
   requestIdMiddleware
 } = require(
@@ -51,11 +59,28 @@ const dependencies =
 
 app.use(bodyParser.json());
 app.use(requestIdMiddleware);
+app.use('/articles', createArticleSearchRouter({
+  articleSearchService: createArticleSearchService()
+}));
 app.use(
   '/ai/explain',
   createStockExplanationRouter({
     stockExplanationService:
       dependencies.stockExplanationService
+  })
+);
+app.use(
+  '/ai/stock-insight',
+  createStockInsightRouter({
+    stockInsightService:
+      dependencies.stockInsightService
+  })
+);
+app.use(
+  '/ai/picks',
+  createStockPicksRouter({
+    stockPicksService:
+      dependencies.stockPicksService
   })
 );
 
@@ -323,4 +348,3 @@ app.use(errorHandler);
 
 const port = process.env.PORT || 8080;
 app.listen(port, '0.0.0.0', () => console.log('EasyMoney AI Server listening on', port));
-
