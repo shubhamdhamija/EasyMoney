@@ -2,8 +2,11 @@ package com.invest.easymoney.di
 
 import android.content.Context
 import android.provider.Settings
+import com.invest.easymoney.data.api.AgentAccessTokenProvider
+import com.invest.easymoney.data.repository.AgentResearchRepositoryImpl
 import com.invest.easymoney.data.repository.BackendRepositoryImpl
 import com.invest.easymoney.data.repository.StockRepositoryImpl
+import com.invest.easymoney.domain.repository.AgentResearchRepository
 import com.invest.easymoney.domain.repository.BackendRepository
 import com.invest.easymoney.domain.repository.StockRepository
 import dagger.Binds
@@ -25,6 +28,26 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindBackendRepository(impl: BackendRepositoryImpl): BackendRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAgentAccessTokenProvider(impl: DevelopmentAgentAccessTokenProvider): AgentAccessTokenProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindAgentResearchRepository(impl: AgentResearchRepositoryImpl): AgentResearchRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCongressRepository(
+        impl: com.invest.easymoney.data.repository.CongressRepositoryImpl
+    ): com.invest.easymoney.domain.repository.CongressRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPortfolioRepository(
+        impl: com.invest.easymoney.data.portfolio.PortfolioRepositoryImpl
+    ): com.invest.easymoney.domain.portfolio.PortfolioRepository
 
     companion object {
         @Provides

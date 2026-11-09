@@ -1,0 +1,32 @@
+{
+  "document_id": "aapl-annual-controlled-001",
+  "symbol": "AAPL",
+  "company_name": "Apple Inc.",
+  "document_type": "annual_report",
+  "title": "Controlled AAPL Annual Report",
+  "published_at": "2026-01-15T00:00:00Z",
+  "source_name": "EasyMoney Test Fixtures",
+  "source_url": "https://example.com/test-fixtures/aapl-annual",
+  "accession_number": "AAPL-AN-2026-001",
+  "sections": [
+    {
+      "section_name": "Revenue",
+      "text": "Revenue increased during the measured period as a result of stronger product sales and service growth. Operating performance remained supported by higher customer engagement and efficient product execution."
+    },
+    {
+      "section_name": "Operating Expenses",
+      "text": "Operating expenses changed during the measured period as research and development spending remained elevated, while marketing and general administrative costs were managed with discipline."
+    },
+    {
+      "section_name": "Risk Factors",
+      "text": "A material risk was disclosed as supply-chain constraints and component availability could affect future operating results. Management highlighted the need to monitor production planning and cost discipline."
+    },
+    {
+      "section_name": "Capital Expenditure",
+      "text": "Capital expenditure increased as investments in manufacturing and product infrastructure were expanded. The company stated that spending remained aligned with long-term operational planning."
+    }
+  ],
+  "checksum": null,
+  "synthetic": true
+}
+

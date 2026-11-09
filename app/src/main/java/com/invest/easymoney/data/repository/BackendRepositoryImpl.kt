@@ -188,4 +188,3 @@ private fun String.toEvidenceSentiment(): EvidenceSentiment =
         "insufficient" -> EvidenceSentiment.INSUFFICIENT
         else -> throw IllegalArgumentException("Unsupported evidence sentiment: $this")
     }
-

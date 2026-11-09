@@ -45,7 +45,12 @@ def test_empty_registry_exposes_nothing() -> None:
 
 def test_definitions_expose_only_name_description_and_schema() -> None:
     for definition in create_default_registry().tool_definitions():
-        assert set(definition.model_dump()) == {"name", "description", "input_schema"}
+        assert set(definition.model_dump()) == {
+            "name",
+            "description",
+            "input_schema",
+            "requires_approval",
+        }
 
 
 def test_registry_remains_the_authoritative_allowlist() -> None:

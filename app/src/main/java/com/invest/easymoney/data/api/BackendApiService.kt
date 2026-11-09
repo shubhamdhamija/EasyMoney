@@ -7,10 +7,15 @@ import com.invest.easymoney.data.api.dto.StockInsightApiResponse
 import com.invest.easymoney.data.api.dto.StockInsightRequest
 import com.invest.easymoney.data.api.dto.StockPicksApiResponse
 import com.invest.easymoney.data.api.dto.StockPicksRequest
+import com.invest.easymoney.data.api.dto.AgentResearchRequestDto
+import com.invest.easymoney.data.api.dto.ToolApprovalDecisionRequestDto
 import com.invest.easymoney.data.api.dto.UpcomingEarningDto
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface BackendApiService {
@@ -42,7 +47,7 @@ interface BackendApiService {
      * Get earnings report for a symbol
      */
     @GET("ai/earnings/{symbol}")
-    suspend fun getEarningsReport(@retrofit2.http.Path("symbol") symbol: String): EarningsResponse
+    suspend fun getEarningsReport(@Path("symbol") symbol: String): EarningsResponse
 
     /**
      * Get upcoming earnings
@@ -52,6 +57,31 @@ interface BackendApiService {
         @Query("from") from: String? = null,
         @Query("to") to: String? = null
     ): UpcomingEarningsResponse
+
+    @POST("agent/research")
+    suspend fun startAgentResearch(
+        @Body request: AgentResearchRequestDto
+    ): Response<ResponseBody>
+
+    @POST("agent/research/{threadId}/approval")
+    suspend fun submitAgentApproval(
+        @Path("threadId") threadId: String,
+        @Body request: ToolApprovalDecisionRequestDto
+    ): Response<ResponseBody>
+
+    @GET("congress/filings")
+    suspend fun getCongressFilings(
+        @Query("member") member: String? = null,
+        @Query("year") year: Int? = null,
+        @Query("limit") limit: Int = 30
+    ): com.invest.easymoney.data.api.dto.CongressFilingsResponseDto
+
+    @GET("congress/filings/{year}/{docId}")
+    suspend fun getCongressFilingDetail(
+        @Path("year") year: Int,
+        @Path("docId") docId: String,
+        @Query("filed") filed: String? = null
+    ): com.invest.easymoney.data.api.dto.CongressFilingDetailDto
 }
 
 data class WatchlistChangePayload(

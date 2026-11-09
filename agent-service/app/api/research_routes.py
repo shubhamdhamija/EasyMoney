@@ -30,4 +30,3 @@ async def research_stock(
         maximum_news_items=request.maximum_news_items,
         maximum_tool_calls=request.maximum_tool_calls,
     )
-

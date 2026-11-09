@@ -30,12 +30,8 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Alerts", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+            com.invest.easymoney.ui.components.CompactTopBar(
+                title = "Alerts",
                 modifier = Modifier.testTag("AlertsTopBar")
             )
         }
@@ -49,7 +45,7 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
             is Resource.Error -> Box(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
-            ) { Text("⚠️ Failed to load alerts") }
+            ) { Text("Failed to load alerts") }
 
             is Resource.Success -> {
                 val alerts = (state as Resource.Success<List<Alert>>).data

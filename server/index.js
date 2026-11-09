@@ -342,6 +342,66 @@ app.get('/ai/predict/:symbol', async (req, res) => {
   }
 });
 
+// Proxy route for Android requests to /agent/research
+const agentServiceBaseUrl = process.env.AGENT_SERVICE_URL || 'http://127.0.0.1:8090';
+
+async function proxyAgentRequest(req, res, endpoint, method = 'POST') {
+  try {
+    const agentUrl = `${agentServiceBaseUrl}${endpoint}`;
+    const response = await axios({
+      method,
+      url: agentUrl,
+      data: ['POST', 'PUT', 'PATCH'].includes(method) ? req.body : undefined,
+      params: ['GET', 'DELETE'].includes(method) ? req.query : undefined,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(req.headers || {})
+      },
+      timeout: 60000,
+    });
+
+    res.status(response.status).set(response.headers || {}).send(response.data);
+  } catch (error) {
+    const status = error.response?.status || 503;
+    const payload = error.response?.data || {
+      error: {
+        code: 'AGENT_SERVICE_UNAVAILABLE',
+        message: 'AI research is temporarily unavailable.'
+      },
+      request_id: req.headers['x-request-id'] || null,
+    };
+
+    res.status(status).json(payload);
+  }
+}
+
+app.post('/agent/research', async (req, res) => {
+  await proxyAgentRequest(req, res, '/agent/research');
+});
+
+app.post('/agent/research/:threadId/approval', async (req, res) => {
+  await proxyAgentRequest(req, res, `/agent/research/${req.params.threadId}/approval`);
+});
+
+// Congress (House PTR) disclosures: public data served by the agent service.
+async function proxyCongressRequest(req, res, endpoint) {
+  try {
+    const response = await axios.get(`${agentServiceBaseUrl}${endpoint}`, {
+      params: req.query,
+      timeout: 45000,
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 503;
+    res.status(status).json(error.response?.data || {
+      error: { code: 'CONGRESS_SERVICE_UNAVAILABLE', message: 'Congress trade data is temporarily unavailable.' },
+    });
+  }
+}
+
+app.get('/congress/filings', (req, res) => proxyCongressRequest(req, res, '/congress/filings'));
+app.get('/congress/filings/:year/:docId', (req, res) =>
+  proxyCongressRequest(req, res, `/congress/filings/${encodeURIComponent(req.params.year)}/${encodeURIComponent(req.params.docId)}`));
 
 // All routes above this line.
 app.use(errorHandler);

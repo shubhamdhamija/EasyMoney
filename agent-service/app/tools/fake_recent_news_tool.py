@@ -7,6 +7,7 @@ from app.tools.tool_errors import ToolError
 class FakeRecentNewsTool:
     name = "get_recent_news"
     input_model = RecentNewsInput
+    requires_approval = False
 
     description = (
         "Returns a limited list of recent news articles for one validated stock symbol. "

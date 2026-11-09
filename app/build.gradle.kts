@@ -26,8 +26,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "BACKEND_DEVICE_HOST", "\"${localProperties["BACKEND_DEVICE_HOST"] ?: "10.0.0.57"}\"")
-        buildConfigField("int", "BACKEND_PORT", "${localProperties["BACKEND_PORT"] ?: "8080"}")
+        buildConfigField("String", "BACKEND_DEVICE_HOST", "\"${localProperties["BACKEND_DEVICE_HOST"]?.toString()?.trim()?.takeIf { it.isNotEmpty() } ?: "192.168.1.100"}\"")
+        buildConfigField("int", "BACKEND_PORT", "${localProperties["BACKEND_PORT"]?.toString()?.trim()?.takeIf { it.isNotEmpty() } ?: "8080"}")
     }
 
     buildTypes {
@@ -42,6 +42,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // java.time (Instant/OffsetDateTime) is used by the portfolio import on API 24+.
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "11"
@@ -56,6 +58,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.androidx.compose.foundation)
     // Core

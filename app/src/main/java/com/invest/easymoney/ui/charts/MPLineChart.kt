@@ -3,7 +3,7 @@ package com.invest.easymoney.ui.charts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -448,7 +448,8 @@ private fun TradingChartPanel(
                         }
                     }
                     .pointerInput(prices) {
-                        detectDragGestures(
+                        // Long-press then drag to scrub, so ordinary swipes still scroll the page.
+                        detectDragGesturesAfterLongPress(
                             onDragStart = { offset ->
                                 selectedIndex = nearestIndex(
                                     x = offset.x,

@@ -10,31 +10,33 @@ object Constants {
     // EasyMoney backend server (auto-detects emulator vs physical device)
     val BACKEND_BASE_URL: String
         get() {
-            val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic")
-                    || android.os.Build.FINGERPRINT.startsWith("unknown")
-                    || android.os.Build.MODEL.contains("google_sdk")
-                    || android.os.Build.MODEL.contains("Emulator")
-                    || android.os.Build.MODEL.contains("Android SDK built for x86")
-                    || android.os.Build.MANUFACTURER.contains("Genymotion")
-                    || android.os.Build.PRODUCT.contains("sdk_google")
-                    || android.os.Build.PRODUCT.contains("google_sdk")
-                    || android.os.Build.PRODUCT.contains("sdk")
-                    || android.os.Build.PRODUCT.contains("sdk_x86")
-                    || android.os.Build.PRODUCT.contains("vbox86p")
-                    || android.os.Build.PRODUCT.contains("emulator")
-                    || android.os.Build.PRODUCT.contains("simulator")
+            val fingerprint = android.os.Build.FINGERPRINT.orEmpty()
+            val model = android.os.Build.MODEL.orEmpty()
+            val product = android.os.Build.PRODUCT.orEmpty()
+            val manufacturer = android.os.Build.MANUFACTURER.orEmpty()
 
-            val backendHost = if (isEmulator) {
-                "10.0.2.2"
-            } else {
-                BuildConfig.BACKEND_DEVICE_HOST
+            val isEmulator = fingerprint.startsWith("generic")
+                    || fingerprint.startsWith("unknown")
+                    || model.contains("google_sdk")
+                    || model.contains("Emulator")
+                    || model.contains("Android SDK built for x86")
+                    || manufacturer.contains("Genymotion")
+                    || product.contains("sdk_google")
+                    || product.contains("google_sdk")
+                    || product.contains("sdk")
+                    || product.contains("sdk_x86")
+                    || product.contains("vbox86p")
+                    || product.contains("emulator")
+                    || product.contains("simulator")
+
+            val configuredHost = BuildConfig.BACKEND_DEVICE_HOST.takeIf { it.isNotBlank() }
+            val backendHost = when {
+                isEmulator -> "10.0.2.2"
+                configuredHost != null -> configuredHost
+                else -> "127.0.0.1"
             }
 
-            return if (isEmulator) {
-                "http://$backendHost:${BuildConfig.BACKEND_PORT}/"
-            } else {
-                "http://$backendHost:${BuildConfig.BACKEND_PORT}/"
-            }
+            return "http://$backendHost:${BuildConfig.BACKEND_PORT}/"
         }
 
     val POPULAR_STOCKS = listOf(

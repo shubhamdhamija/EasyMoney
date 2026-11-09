@@ -93,4 +93,3 @@ class AiInsightRepositoryImpl @Inject constructor(
         }
     }
 }
-

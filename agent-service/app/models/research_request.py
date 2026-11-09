@@ -21,4 +21,3 @@ class ResearchRequest(BaseModel):
             raise ValueError("symbol contains unsupported characters")
 
         return normalized
-

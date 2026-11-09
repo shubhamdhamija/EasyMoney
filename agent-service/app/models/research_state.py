@@ -2,6 +2,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.models.financial_document_search import FinancialDocumentSearchResult
+
 
 class ResearchStep(BaseModel):
     tool_name: str = Field(min_length=1)
@@ -10,6 +12,7 @@ class ResearchStep(BaseModel):
         "completed",
         "skipped",
         "failed",
+        "rejected",
     ]
 
 
@@ -23,6 +26,8 @@ class ResearchState(BaseModel):
     steps: list[ResearchStep] = Field(default_factory=list)
     quote: dict[str, Any] | None = None
     news: dict[str, Any] | None = None
+    document_results: FinancialDocumentSearchResult | None = None
+    document_search_queries: list[str] = Field(default_factory=list)
     error: ResearchError | None = None
 
     agent_used: bool = False
@@ -48,9 +53,12 @@ class ResearchState(BaseModel):
             return self.quote
         if key == "news":
             return self.news
+        if key == "document_results":
+            return None if self.document_results is None else self.document_results.model_dump(mode="json")
+        if key == "document_search_queries":
+            return list(self.document_search_queries)
         if key == "error":
             return None if self.error is None else self.error.model_dump(mode="json")
         if key == "agent_used":
             return self.agent_used
         raise KeyError(key)
-

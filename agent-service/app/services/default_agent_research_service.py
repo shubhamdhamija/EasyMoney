@@ -4,7 +4,7 @@ from app.config.settings import Settings, get_settings
 from app.services.agent_research_service import AgentResearchService
 from app.services.configured_decision_model import create_configured_decision_model
 from app.services.model_driven_research_planner import ModelDrivenResearchPlanner
-from app.tools.default_registry import create_default_registry
+from app.tools.default_registry import create_configured_registry
 
 
 def create_default_agent_research_service(
@@ -20,7 +20,7 @@ def create_default_agent_research_service(
     )
 
     planner = ModelDrivenResearchPlanner(
-        registry=create_default_registry(),
+        registry=create_configured_registry(resolved_settings),
         decision_model=decision_model,
     )
 

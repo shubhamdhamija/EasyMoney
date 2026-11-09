@@ -2,7 +2,9 @@ package com.invest.easymoney.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
@@ -44,9 +46,13 @@ sealed class Screen(
     data object Watchlist : Screen("watchlist", "Watchlist", Icons.Filled.Star, Icons.Outlined.StarBorder)
     data object AiHub : Screen("aihub", "AI Hub", Icons.Filled.AutoAwesome, Icons.Outlined.AutoAwesome)
     data object Alerts : Screen("alerts", "Alerts", Icons.Filled.Notifications, Icons.Outlined.Notifications)
+    data object Portfolio : Screen(
+        "portfolio", "Portfolio",
+        Icons.Filled.AccountBox, Icons.Outlined.AccountBox
+    )
 }
 
-val bottomNavItems = listOf(Screen.Home, Screen.Watchlist, Screen.AiHub, Screen.Alerts)
+val bottomNavItems = listOf(Screen.Home, Screen.Watchlist, Screen.Portfolio, Screen.AiHub, Screen.Alerts)
 
 @Composable
 fun AppNavGraph() {
@@ -54,6 +60,9 @@ fun AppNavGraph() {
 
     Scaffold(
         bottomBar = { AppBottomBar(navController) },
+        // Each screen's top bar already consumes the status-bar inset; applying it here too
+        // produced a blank band above the top bar.
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         modifier = Modifier.testTag("AppScaffold")
     ) { innerPadding ->
         NavHost(
@@ -68,6 +77,13 @@ fun AppNavGraph() {
                     },
                     onArticleSearchClick = {
                         navController.navigate("articles")
+                    },
+                    onOpenAiHub = {
+                        navController.navigate(Screen.AiHub.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }
@@ -81,18 +97,46 @@ fun AppNavGraph() {
                     }
                 )
             }
-            composable(Screen.AiHub.route) {
-                AiHubScreen()
+            composable(
+                route = "aihub?symbol={symbol}",
+                arguments = listOf(navArgument("symbol") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                })
+            ) { entry ->
+                AiHubScreen(
+                    initialSymbol = entry.arguments?.getString("symbol"),
+                    onStockClick = { symbol -> navController.navigate("detail/$symbol") },
+                    onOpenCongress = { navController.navigate("congress") }
+                )
+            }
+            composable("congress") {
+                com.invest.easymoney.ui.congress.CongressScreen(
+                    onBack = { navController.popBackStack() },
+                    onStockClick = { symbol -> navController.navigate("detail/$symbol") }
+                )
             }
             composable(Screen.Alerts.route) {
                 AlertsScreen()
+            }
+            composable(Screen.Portfolio.route) {
+                com.invest.easymoney.ui.portfolio.PortfolioScreen()
             }
             composable(
                 route = "detail/{symbol}",
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType })
             ) { backStackEntry ->
-                val vm: StockDetailViewModel = hiltViewModel(backStackEntry)
-                StockDetailScreen(onBack = { navController.popBackStack() }, viewModel = vm)
+                val stockDetailVm: StockDetailViewModel = hiltViewModel(backStackEntry)
+                StockDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    viewModel = stockDetailVm,
+                    onResearchInHub = { symbol ->
+                        navController.navigate("aihub?symbol=$symbol") {
+                            launchSingleTop = true
+                        }
+                    },
+                )
             }
         }
     }
@@ -104,13 +148,13 @@ private fun AppBottomBar(navController: NavHostController) {
     val currentDestination = navBackStackEntry?.destination
 
     val showBottomBar = bottomNavItems.any { screen ->
-        currentDestination?.hierarchy?.any { it.route == screen.route } == true
+        currentDestination?.hierarchy?.any { it.route?.substringBefore('?') == screen.route } == true
     }
     if (!showBottomBar) return
 
     NavigationBar(modifier = Modifier.testTag("BottomNavigationBar")) {
         bottomNavItems.forEach { screen ->
-            val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+            val selected = currentDestination?.hierarchy?.any { it.route?.substringBefore('?') == screen.route } == true
             NavigationBarItem(
                 icon = {
                     Icon(

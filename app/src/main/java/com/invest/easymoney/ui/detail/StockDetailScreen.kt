@@ -10,21 +10,25 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,7 +52,11 @@ import com.invest.easymoney.domain.model.NetworkResult
 import com.invest.easymoney.domain.model.News
 import com.invest.easymoney.domain.model.Stock
 import com.invest.easymoney.domain.model.StockInsight
-import com.invest.easymoney.domain.model.StockExplanation
+import com.invest.easymoney.ui.agent.AgentApprovalSheet
+import com.invest.easymoney.ui.agent.AgentErrorCard
+import com.invest.easymoney.ui.agent.AgentResearchCard
+import com.invest.easymoney.ui.agent.AgentResearchLoadingCard
+import com.invest.easymoney.ui.agent.AgentResearchUiState
 import com.invest.easymoney.ui.charts.MPLineChart
 import com.invest.easymoney.ui.theme.GainGreen
 import com.invest.easymoney.ui.theme.LossRed
@@ -58,7 +68,7 @@ import kotlin.math.absoluteValue
 
 private enum class PremiumSection(val label: String) {
     OVERVIEW("Overview"),
-    AI("AI Insight"),
+    AI("AI"),
     NEWS("News")
 }
 
@@ -66,6 +76,7 @@ private enum class PremiumSection(val label: String) {
 object StockDetailTestTags {
     const val LIST = "stock_detail_list"
     const val EXPLAIN_MOVE_CHIP = "explain_move_chip"
+    const val RESEARCH_BUTTON = "research_with_ai_button"
     const val LEGACY_AI_INSIGHT_RETRY = "legacy_ai_insight_retry"
     const val TAB_OVERVIEW = "stock_detail_tab_overview"
     const val TAB_AI_INSIGHT = "stock_detail_tab_ai_insight"
@@ -110,7 +121,9 @@ private data class FinancialRatiosUi(
 @Composable
 fun StockDetailScreen(
     onBack: () -> Unit,
-    viewModel: StockDetailViewModel = hiltViewModel()
+    viewModel: StockDetailViewModel = hiltViewModel(),
+    /** AI research lives in the AI Hub; this opens it for the given symbol. */
+    onResearchInHub: (String) -> Unit = {}
 ) {
     val stockState by viewModel.stockState.collectAsStateWithLifecycle()
     val newsState by viewModel.newsState.collectAsStateWithLifecycle()
@@ -119,6 +132,7 @@ fun StockDetailScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isInsightLoading by viewModel.isInsightLoading.collectAsStateWithLifecycle()
     val isInWatchlist by viewModel.isInWatchlist.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
 
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -157,17 +171,9 @@ fun StockDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(viewModel.symbol, style = TradingTextStyles.Ticker, fontWeight = FontWeight.Bold)
-                        Text(
-                            "Premium Stock Detail",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.82f)
-                        )
-                    }
-                },
+            com.invest.easymoney.ui.components.CompactTopBar(
+                title = viewModel.symbol,
+                titleStyle = TradingTextStyles.Ticker,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -178,19 +184,13 @@ fun StockDetailScreen(
                         Icon(
                             imageVector = if (isInWatchlist) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             contentDescription = "Watchlist",
-                            tint = if (isInWatchlist) Color(0xFFFFD54F) else MaterialTheme.colorScheme.onPrimary
+                            tint = if (isInWatchlist) Color(0xFFFFD54F) else MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = { showAlertDialog = true }) {
                         Icon(Icons.Default.Notifications, contentDescription = "Set Alert")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
     ) { padding ->
@@ -213,6 +213,7 @@ fun StockDetailScreen(
                     val financialRatiosUi = buildFinancialRatiosUi(stock)
 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize().padding(padding).testTag(StockDetailTestTags.LIST),
                     contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -224,11 +225,11 @@ fun StockDetailScreen(
                             onToggleWatchlist = { viewModel.toggleWatchlist() },
                             onSetAlert = { showAlertDialog = true },
                             onExplainMove = {
-                                // Show the result where it will appear. Selecting the tab alone
-                                // never starts a request; only this explicit action does.
                                 selectedSectionName = PremiumSection.AI.name
                                 viewModel.explainMove()
-                            }
+                            },
+                            onResearchWithAiClick = { onResearchInHub(stock.symbol) },
+                            isResearchLoading = false
                         )
                     }
                     item {
@@ -261,8 +262,18 @@ fun StockDetailScreen(
                             }
                         }
                         PremiumSection.AI -> {
-                            item { AiSentimentMeter(insightState = insightState, isLoading = isInsightLoading) }
-                            item { AiInsightCard(insightState = insightState, isLoading = isInsightLoading, onRetry = { viewModel.loadDetail() }) }
+                            val insightError = insightState as? NetworkResult.Error
+                            if (insightError != null && !isInsightLoading) {
+                                item {
+                                    AiInsightUnavailableCard(
+                                        message = insightError.throwable.message ?: "AI insight is temporarily unavailable.",
+                                        onRetry = { viewModel.loadDetail() }
+                                    )
+                                }
+                            } else {
+                                item { AiSentimentMeter(insightState = insightState, isLoading = isInsightLoading) }
+                                item { AiInsightCard(insightState = insightState, isLoading = isInsightLoading, onRetry = { viewModel.loadDetail() }) }
+                            }
                             item {
                                 ExplainMoveCard(
                                     state = explainState,
@@ -290,13 +301,16 @@ fun StockDetailScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PremiumHeroCard(
     stock: Stock,
     isInWatchlist: Boolean,
     onToggleWatchlist: () -> Unit,
     onSetAlert: () -> Unit,
-    onExplainMove: () -> Unit
+    onExplainMove: () -> Unit,
+    onResearchWithAiClick: () -> Unit,
+    isResearchLoading: Boolean
 ) {
     val isPositive = stock.changePercent >= 0
     val trendColor = if (isPositive) GainGreen else LossRed
@@ -341,7 +355,11 @@ private fun PremiumHeroCard(
                 }
             }
             Spacer(modifier = Modifier.height(18.dp))
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 AssistChip(
                     onClick = onToggleWatchlist,
                     label = { Text(if (isInWatchlist) "In Watchlist" else "Add Watchlist") },
@@ -367,6 +385,26 @@ private fun PremiumHeroCard(
                     leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     shape = TradingShapes.Pill
                 )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onResearchWithAiClick,
+                enabled = !isResearchLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag(StockDetailTestTags.RESEARCH_BUTTON),
+                shape = TradingShapes.Pill
+            ) {
+                if (isResearchLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Researching\u2026")
+                } else {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Research with AI", fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }
@@ -399,7 +437,7 @@ private fun PremiumChartContainer(
                     Text("Interactive Price Chart", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Scrub, inspect, and review stock movement",
+                        "Tap a point, or press and hold then drag, to inspect the price",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -475,7 +513,7 @@ private fun EnhancedMarketDataCard(stock: Stock) {
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Market Data", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
@@ -546,7 +584,7 @@ private fun AnalystRatingCard(data: AnalystRatingUi?, currentPrice: Double, modi
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.TrendingUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text("Analyst Rating", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -615,7 +653,7 @@ private fun FinancialRatiosExpandableCard(data: FinancialRatiosUi?, modifier: Mo
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.AutoMirrored.Filled.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text("Financial Ratios", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -822,7 +860,7 @@ private fun AiSentimentMeter(insightState: NetworkResult<StockInsight>?, isLoadi
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.TrendingUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("AI Sentiment Meter", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
@@ -886,7 +924,10 @@ private fun AiInsightCard(insightState: NetworkResult<StockInsight>?, isLoading:
                     }
                 }
                 insightState is NetworkResult.Error -> {
-                    Text("⚠️ ${insightState.throwable.message ?: "Unable to load insight"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                        Text(insightState.throwable.message ?: "Unable to load insight", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
                     TextButton(
                         onClick = onRetry,
                         modifier = Modifier.testTag(StockDetailTestTags.LEGACY_AI_INSIGHT_RETRY),
@@ -900,13 +941,16 @@ private fun AiInsightCard(insightState: NetworkResult<StockInsight>?, isLoading:
                     SentimentBadge(insight.sentiment)
                     Text(insight.insight, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     HorizontalDivider(color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.15f))
-                    InsightOutlookRow("📅 Short-term", insight.shortTermOutlook)
-                    InsightOutlookRow("📈 Long-term", insight.longTermOutlook)
-                    Text(
-                        "⚠️ For informational purposes only. Not financial advice.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f)
-                    )
+                    InsightOutlookRow("Short-term outlook", insight.shortTermOutlook)
+                    InsightOutlookRow("Long-term outlook", insight.longTermOutlook)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Filled.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f), modifier = Modifier.size(14.dp))
+                        Text(
+                            "For informational purposes only. Not financial advice.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f)
+                        )
+                    }
                 }
                 else -> {
                     Text("Insight unavailable.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -918,13 +962,20 @@ private fun AiInsightCard(insightState: NetworkResult<StockInsight>?, isLoading:
 
 @Composable
 private fun SentimentBadge(sentiment: String) {
-    val (emoji, color) = when (sentiment.lowercase()) {
-        "bullish" -> "🟢 Bullish" to GainGreen
-        "bearish" -> "🔴 Bearish" to LossRed
-        else -> "🟡 Neutral" to Color(0xFFB8860B)
+    val (label, color, icon) = when (sentiment.lowercase()) {
+        "bullish" -> Triple("Bullish", GainGreen, Icons.Default.ArrowUpward)
+        "bearish" -> Triple("Bearish", LossRed, Icons.Default.ArrowDownward)
+        else -> Triple("Neutral", Color(0xFFB8860B), Icons.Filled.Remove)
     }
     Surface(shape = TradingShapes.Pill, color = color.copy(alpha = 0.15f)) {
-        Text(emoji, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = TradingTextStyles.Chip, color = color, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Text(label, style = TradingTextStyles.Chip, color = color, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -1028,7 +1079,10 @@ private fun PremiumErrorState(message: String, onRetry: () -> Unit, modifier: Mo
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Card(shape = TradingShapes.Dialog, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("⚠️ $message", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
+                    Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(onClick = onRetry, shape = TradingShapes.Input) { Text("Retry") }
             }
@@ -1063,8 +1117,8 @@ private fun SetPriceAlertDialog(onDismissDialog: () -> Unit, onConfirm: (Float, 
                     shape = TradingShapes.Input
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = selectedType == AlertType.INCREASE, onClick = { selectedType = AlertType.INCREASE }, label = { Text("📈 Gain") }, shape = TradingShapes.Pill)
-                    FilterChip(selected = selectedType == AlertType.DECREASE, onClick = { selectedType = AlertType.DECREASE }, label = { Text("📉 Drop") }, shape = TradingShapes.Pill)
+                    FilterChip(selected = selectedType == AlertType.INCREASE, onClick = { selectedType = AlertType.INCREASE }, label = { Text("Gain") }, leadingIcon = { Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(16.dp)) }, shape = TradingShapes.Pill)
+                    FilterChip(selected = selectedType == AlertType.DECREASE, onClick = { selectedType = AlertType.DECREASE }, label = { Text("Drop") }, leadingIcon = { Icon(Icons.Default.ArrowDownward, contentDescription = null, modifier = Modifier.size(16.dp)) }, shape = TradingShapes.Pill)
                 }
             }
         },
@@ -1144,4 +1198,27 @@ private fun formatMarketCap(cap: Double): String = when {
     cap >= 1_000_000 -> "$${String.format(Locale.US, "%.1f", cap / 1_000_000)}T"
     cap >= 1_000 -> "$${String.format(Locale.US, "%.1f", cap / 1_000)}B"
     else -> "$${String.format(Locale.US, "%.1f", cap)}M"
+}
+
+
+/** One compact state shown instead of several separate AI error blocks when insight loading failed. */
+@Composable
+private fun AiInsightUnavailableCard(message: String, onRetry: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = TradingShapes.Card,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                Text("AI insight unavailable", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+            }
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(
+                onClick = onRetry,
+                modifier = Modifier.heightIn(min = 48.dp).testTag(StockDetailTestTags.LEGACY_AI_INSIGHT_RETRY)
+            ) { Text("Retry") }
+        }
+    }
 }

@@ -12,4 +12,6 @@ class ToolDefinition(BaseModel):
     name: str = Field(min_length=1)
     description: str = Field(min_length=1)
     input_schema: dict[str, Any]
-
+    # Set by the application from the registered tool. A model can neither
+    # supply nor override it.
+    requires_approval: bool = False

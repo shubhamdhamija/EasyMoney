@@ -1,0 +1,28 @@
+{
+  "document_id": "msft-earnings-controlled-001",
+  "symbol": "MSFT",
+  "company_name": "Microsoft Corporation",
+  "document_type": "earnings_release",
+  "title": "Controlled Microsoft Earnings Release",
+  "published_at": "2026-05-01T00:00:00Z",
+  "source_name": "EasyMoney Test Fixtures",
+  "source_url": "https://example.com/test-fixtures/msft-earnings",
+  "accession_number": "MSFT-ER-2026-001",
+  "sections": [
+    {
+      "section_name": "Revenue",
+      "text": "Revenue increased during the measured period as cloud offerings continued to drive demand and commercial usage expanded across product lines."
+    },
+    {
+      "section_name": "Operating Income",
+      "text": "Operating income improved during the measured period as productivity and cloud businesses benefited from higher utilization and disciplined expense management."
+    },
+    {
+      "section_name": "Cloud Operations",
+      "text": "Cloud operations expanded as capacity utilization remained strong and recurring customer demand supported continued infrastructure investment."
+    }
+  ],
+  "checksum": null,
+  "synthetic": true
+}
+

@@ -1,0 +1,28 @@
+{
+  "document_id": "aapl-quarterly-controlled-001",
+  "symbol": "AAPL",
+  "company_name": "Apple Inc.",
+  "document_type": "quarterly_report",
+  "title": "Controlled AAPL Quarterly Report",
+  "published_at": "2026-04-30T00:00:00Z",
+  "source_name": "EasyMoney Test Fixtures",
+  "source_url": "https://example.com/test-fixtures/aapl-quarterly",
+  "accession_number": "AAPL-Q2-2026-001",
+  "sections": [
+    {
+      "section_name": "Quarterly Revenue",
+      "text": "Quarterly revenue increased during the measured period as sales volumes improved and product demand remained resilient across major operating segments."
+    },
+    {
+      "section_name": "Guidance",
+      "text": "Guidance was raised for the upcoming period based on strong operating performance, disciplined expense management, and continued customer demand."
+    },
+    {
+      "section_name": "Liquidity",
+      "text": "Liquidity remained healthy as the company maintained a strong cash position and continued to manage capital allocation with a measured balance between investments and operating cash needs."
+    }
+  ],
+  "checksum": null,
+  "synthetic": true
+}
+

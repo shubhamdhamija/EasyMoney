@@ -27,6 +27,12 @@ def is_duplicate_request(state: ResearchState, tool_name: str) -> bool:
         return state.quote is not None
     if tool_name == "get_recent_news":
         return state.news is not None
+    if tool_name == "search_financial_documents":
+        return any(
+            query.strip().lower() == candidate.strip().lower()
+            for query in state.document_search_queries
+            for candidate in [query]
+        )
     return False
 
 
@@ -54,6 +60,21 @@ def prepare_tool_arguments(
             prepared["maximum_items"] = maximum_news_items
         elif isinstance(requested, int) and not isinstance(requested, bool):
             prepared["maximum_items"] = min(requested, maximum_news_items)
+
+    if tool_name == "search_financial_documents":
+        query = prepared.get("query")
+        if not isinstance(query, str):
+            return None
+        normalized_query = query.strip()
+        if not normalized_query:
+            return None
+        maximum_results = prepared.get("maximum_results", 5)
+        if not isinstance(maximum_results, int) or isinstance(maximum_results, bool):
+            return None
+        prepared["maximum_results"] = max(1, min(int(maximum_results), 10))
+        prepared["query"] = normalized_query
+        if any(existing.strip().lower() == normalized_query.lower() for existing in state.document_search_queries):
+            return None
 
     return prepared
 
@@ -98,8 +119,16 @@ def apply_tool_result(
         state.news = result
         return
 
+    if tool_name == "search_financial_documents":
+        state.document_results = result.get("results")
+        if isinstance(result, dict):
+            state.document_search_queries.append(result.get("query", ""))
+        return
+
+    if tool_name == "save_research_report":
+        return
+
     state.error = ResearchError(
         code="UNSUPPORTED_TOOL_RESULT",
         message="The planner could not store the tool result.",
     )
-

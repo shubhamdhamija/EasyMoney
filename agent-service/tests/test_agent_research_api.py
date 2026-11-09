@@ -94,7 +94,10 @@ def test_agent_endpoint_returns_deterministic_report() -> None:
         "tools_used",
         "error_code",
         "agent_used",
+        "headlines",
     }
+    assert [item["source"] for item in body["headlines"]]
+    assert all(item["headline"] for item in body["headlines"])
 
 
 def test_agent_endpoint_caps_news_by_request_limit() -> None:

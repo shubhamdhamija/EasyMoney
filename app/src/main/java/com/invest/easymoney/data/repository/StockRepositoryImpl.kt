@@ -228,18 +228,28 @@ class StockRepositoryImpl @Inject constructor(
 
 
     override suspend fun getPopularStocksFromApi(): Resource<List<String>> = try {
+        // IEX Cloud has been shut down and no real token is configured: calling it only
+        // burns a 20s connect timeout before the same default list is used.
+        if (Constants.IEX_API_TOKEN.startsWith("YOUR_")) {
+            Resource.Success(Constants.POPULAR_STOCKS)
+        } else {
+            fetchPopularFromIex()
+        }
+    } catch (e: Exception) {
+        Log.w("StockRepo", "Failed to fetch from IEX: ${e.message}, using defaults", e)
+        Resource.Success(Constants.POPULAR_STOCKS)
+    }
+
+    private suspend fun fetchPopularFromIex(): Resource<List<String>> {
         Log.d("StockRepo", "Fetching popular stocks from IEX...")
         val response = iexApi.getMostActiveStocks(Constants.IEX_API_TOKEN)
         val symbols = response.mapNotNull { it.symbol.trim().ifEmpty { null } }.distinct().take(30)
-        if (symbols.isNotEmpty()) {
+        return if (symbols.isNotEmpty()) {
             Log.d("StockRepo", "Got ${symbols.size} popular symbols from IEX")
             Resource.Success(symbols)
         } else {
             Log.w("StockRepo", "IEX returned empty symbols, using defaults")
             Resource.Success(Constants.POPULAR_STOCKS)
         }
-    } catch (e: Exception) {
-        Log.w("StockRepo", "Failed to fetch from IEX: ${e.message}, using defaults", e)
-        Resource.Success(Constants.POPULAR_STOCKS)
     }
     }

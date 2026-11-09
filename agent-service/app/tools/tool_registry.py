@@ -1,8 +1,11 @@
+import hashlib
+import json
 from typing import Any
 
 from pydantic import ValidationError
 
 from app.models.tool_definition import ToolDefinition
+from app.tools.approved_execution import ApprovedExecutionContext
 from app.tools.tool_errors import ToolError
 
 
@@ -13,7 +16,13 @@ class ToolRegistry:
     def register(self, tool: Any) -> None:
         self._tools[tool.name] = tool
 
-    async def execute(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def execute(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        *,
+        approval: ApprovedExecutionContext | None = None,
+    ) -> dict[str, Any]:
         tool = self._tools.get(tool_name)
 
         if tool is None:
@@ -22,6 +31,20 @@ class ToolRegistry:
                 "error": {
                     "code": "UNKNOWN_TOOL",
                     "message": "The requested tool is not available.",
+                },
+            }
+
+        # Approval comes only from the trusted context object, never from the
+        # model-controlled arguments.
+        if self.requires_approval(tool_name) and not (
+            isinstance(approval, ApprovedExecutionContext)
+            and approval.tool_name == tool_name
+        ):
+            return {
+                "ok": False,
+                "error": {
+                    "code": "APPROVAL_REQUIRED",
+                    "message": "This tool requires explicit human approval.",
                 },
             }
 
@@ -52,6 +75,26 @@ class ToolRegistry:
             "result": result.model_dump(mode="json"),
         }
 
+    def validate_arguments(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Normalized arguments, or None if the tool is unknown or input is invalid."""
+        tool = self._tools.get(tool_name)
+
+        if tool is None:
+            return None
+
+        try:
+            return tool.input_model.model_validate(arguments).model_dump(mode="json")
+        except ValidationError:
+            return None
+
+    def requires_approval(self, tool_name: str) -> bool:
+        tool = self._tools.get(tool_name)
+        return tool is not None and getattr(tool, "requires_approval", False) is True
+
     def contains(self, tool_name: str) -> bool:
         normalized_name = tool_name.strip().lower()
         return normalized_name in self._tools
@@ -65,6 +108,7 @@ class ToolRegistry:
                 name=tool.name,
                 description=tool.description,
                 input_schema=tool.input_model.model_json_schema(),
+                requires_approval=getattr(tool, "requires_approval", False) is True,
             )
             for _, tool in sorted(self._tools.items())
         ]

@@ -26,4 +26,3 @@ class ResearchService:
         )
 
         return build_research_report(state)
-

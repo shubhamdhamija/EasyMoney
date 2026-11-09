@@ -32,6 +32,12 @@ from app.services.research_report_builder import build_research_report
 from app.tools.fake_recent_news_tool import FakeRecentNewsTool
 from app.tools.fake_stock_quote_tool import FakeStockQuoteTool
 from app.tools.tool_registry import ToolRegistry
+from evals.approval_evals import (
+    approval_report_payload,
+    check_approval_gates,
+    print_approval_report,
+    run_approval_evals,
+)
 
 DEFAULT_CASES_PATH = Path(__file__).with_name("research_agent_cases.json")
 
@@ -576,6 +582,16 @@ def main(argv: list[str] | None = None) -> int:
     summary = summarize(results, unexpected_provider_calls=blocked_calls)
     failures = check_gates(summary, args.mode)
 
+    # Approval, checkpoint and resume cases are offline by design: fake mode only.
+    approval_evaluation = None
+    if args.mode == "fake" and not args.only:
+        approval_evaluation = asyncio.run(run_approval_evals())
+        failures += [
+            f"approval: {failure}"
+            for failure in check_approval_gates(approval_evaluation["summary"])
+        ]
+        print_approval_report(approval_evaluation)
+
     print_report(args.mode, results, summary, failures)
 
     if args.output:
@@ -586,6 +602,11 @@ def main(argv: list[str] | None = None) -> int:
                     "summary": summary,
                     "gate_failures": failures,
                     "cases": [asdict(r) for r in results],
+                    "approval_evaluation": (
+                        approval_report_payload(approval_evaluation)
+                        if approval_evaluation
+                        else None
+                    ),
                 },
                 indent=2,
             ),

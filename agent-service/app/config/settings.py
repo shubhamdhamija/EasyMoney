@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import lru_cache
 
 from pydantic import Field, SecretStr
@@ -17,10 +19,27 @@ class Settings(BaseSettings):
     )
 
     agent_live_calls_enabled: str = "false"
+    # Use real quote/news providers instead of the fixed fake data set.
+    agent_live_market_data: str = "false"
     groq_api_key: SecretStr | None = None
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model: str = "openai/gpt-oss-20b"
     groq_timeout_seconds: float = Field(default=30, gt=0, le=300)
+
+    agent_jwt_secret: SecretStr | None = Field(
+        default=SecretStr("test-only-jwt-secret-not-for-production"),
+    )
+    agent_jwt_issuer: str = "easy-money-agent"
+    agent_jwt_audience: str = "easy-money-agent"
+    agent_jwt_algorithm: str = "HS256"
+
+    agent_approval_ttl_seconds: int = 900
+    agent_workflow_ttl_seconds: int = 86400
+    agent_completed_retention_seconds: int = 604800
+
+    @property
+    def live_market_data_enabled(self) -> bool:
+        return self.agent_live_market_data == "true"
 
     @property
     def live_calls_enabled(self) -> bool:
@@ -31,4 +50,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

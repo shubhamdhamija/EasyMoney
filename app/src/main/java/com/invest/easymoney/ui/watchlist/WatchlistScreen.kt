@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -46,21 +47,16 @@ fun WatchlistScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Watchlist", fontWeight = FontWeight.Bold) },
+            com.invest.easymoney.ui.components.CompactTopBar(
+                title = "Watchlist",
+                modifier = Modifier.testTag("WatchlistTopBar"),
                 actions = {
                     if (state !is Resource.Loading) {
                         IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.testTag("WatchlistRefreshButton")) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.testTag("WatchlistTopBar")
+                }
             )
         }
     ) { padding ->
@@ -115,7 +111,10 @@ private fun WatchlistTab(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("⚠️ ${(state as Resource.Error).message}")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                Text((state as Resource.Error).message)
+            }
         }
 
         is Resource.Success -> {
@@ -427,7 +426,7 @@ private fun StockEarningsCard(
 
                 is Resource.Error -> {
                     Text(
-                        "⚠️ ${(earningsState as Resource.Error).message}",
+                        "Earnings unavailable: ${(earningsState as Resource.Error).message}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )

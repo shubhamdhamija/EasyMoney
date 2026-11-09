@@ -1,0 +1,28 @@
+{
+  "document_id": "tsla-material-controlled-001",
+  "symbol": "TSLA",
+  "company_name": "Tesla, Inc.",
+  "document_type": "material_event",
+  "title": "Controlled Tesla Material Event",
+  "published_at": "2026-03-12T00:00:00Z",
+  "source_name": "EasyMoney Test Fixtures",
+  "source_url": "https://example.com/test-fixtures/tsla-material",
+  "accession_number": "TSLA-ME-2026-001",
+  "sections": [
+    {
+      "section_name": "Material Event",
+      "text": "A material event was disclosed related to manufacturing milestones and production timing, with management noting that execution risk remained elevated."
+    },
+    {
+      "section_name": "Production",
+      "text": "Production output increased during the measured period, while the company continued to monitor capacity planning and component throughput across major facilities."
+    },
+    {
+      "section_name": "Risk Disclosure",
+      "text": "A risk disclosure noted that supply constraints, operational ramp complexity, and capital requirements could affect future manufacturing performance."
+    }
+  ],
+  "checksum": null,
+  "synthetic": true
+}
+
