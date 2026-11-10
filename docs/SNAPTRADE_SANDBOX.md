@@ -151,8 +151,8 @@ The agent does not use SnapTrade. A later milestone may expose normalized, conse
 - Cost basis is not mapped (`averageCost` is null) because the new positions response returns a total cost basis.
 - A connection created at SnapTrade but never completed in EasyMoney is not adopted later; a new session ignores
   connections that already existed. It must be removed at the provider.
-- `test_settings_defaults_are_safe` reads the real `agent-service/.env`; run `SNAPTRADE_ENABLED=false pytest -q` when
-  SnapTrade is enabled locally.
+- Tests pin `SNAPTRADE_*` settings in `agent-service/tests/conftest.py` (disabled, empty credentials), so a developer's
+  ignored `.env` is never loaded by the suite.
 - Disconnect is not automatically retried by the app code, but OkHttp's default connection retry still applies.
 - Synced data lives on the server; the Android cache is in memory and reloaded from the backend.
 
