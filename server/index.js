@@ -39,6 +39,9 @@ const {
   createPortfolioConnectionProxyRouter
 } = require('./routes/portfolioConnectionRoutes');
 const {
+  createPortfolioResearchProxyRouter
+} = require('./routes/portfolioResearchRoutes');
+const {
   requestIdMiddleware
 } = require(
   './middleware/requestId'
@@ -353,6 +356,9 @@ app.use(
   '/portfolio/connections',
   createPortfolioConnectionProxyRouter({ agentServiceBaseUrl, httpClient: axios })
 );
+
+// Allow-listed, read-only portfolio research proxy (consent, CSV context, research).
+app.use(createPortfolioResearchProxyRouter({ agentServiceBaseUrl, httpClient: axios }));
 
 async function proxyAgentRequest(req, res, endpoint, method = 'POST') {
   try {

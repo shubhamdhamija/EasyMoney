@@ -33,9 +33,16 @@ from app.models.tool_approval import (
     fingerprint_tool_call,
     project_safe_arguments,
 )
+from app.models.tool_execution_context import ToolExecutionContext
 from app.services.decision_model import DecisionModel
+from app.services.portfolio_research_setup import build_portfolio_research_state
 from app.services.research_report_builder import build_research_report
-from app.services.tool_execution_policy import apply_tool_result, evaluate_tool_request
+from app.services.tool_execution_policy import (
+    apply_tool_result,
+    evaluate_tool_request,
+    finish_error,
+    policy_rejection_error,
+)
 from app.tools.approved_execution import issue_approved_execution_context
 from app.tools.tool_registry import ToolRegistry
 
@@ -81,6 +88,29 @@ def initial_graph_input(
     }
 
 
+def initial_portfolio_graph_input(
+    *,
+    execution_context: ToolExecutionContext,
+    maximum_tool_calls: int = 5,
+    maximum_decisions: int = 8,
+    maximum_news_items: int = 3,
+) -> dict[str, Any]:
+    """Portfolio research input. The trusted context is application-issued."""
+    return {
+        "research": build_portfolio_research_state(
+            execution_context,
+            maximum_tool_calls=maximum_tool_calls,
+            maximum_decisions=maximum_decisions,
+        ),
+        "decision": None,
+        "report": None,
+        "maximum_news_items": maximum_news_items,
+        "pending_approval": None,
+        "consumed_approval_ids": [],
+        "execution_context": execution_context,
+    }
+
+
 def _fail(research: ResearchState, code: str, message: str) -> None:
     research.error = ResearchError(code=code, message=message)
 
@@ -107,6 +137,13 @@ def _record_policy_rejection(
     if outcome == "invalid_arguments":
         research.steps.append(ResearchStep(tool_name=tool_name, status="failed"))
         _fail(research, "INVALID_TOOL_ARGUMENTS", "The tool arguments are invalid.")
+        return True
+
+    if outcome in ("consent_required", "portfolio_rejected"):
+        research.steps.append(ResearchStep(tool_name=tool_name, status="rejected"))
+        rejection = policy_rejection_error(outcome)
+        if rejection is not None:
+            research.error = rejection
         return True
 
     return False
@@ -138,12 +175,8 @@ def create_research_graph(
         decision = await decision_model.decide(research, available_tools)
         research.decision_count += 1
 
-        if decision.action == "finish" and research.quote is None and research.error is None:
-            _fail(
-                research,
-                "QUOTE_NOT_COLLECTED",
-                "The workflow finished without collecting a quote.",
-            )
+        if decision.action == "finish":
+            research.error = finish_error(research) or research.error
 
         return {"research": research, "decision": decision}
 
@@ -166,7 +199,11 @@ def create_research_graph(
         if _record_policy_rejection(research, tool_name, policy.outcome):
             return {"research": research, "decision": None}
 
-        response = await registry.execute(tool_name=tool_name, arguments=policy.arguments)
+        response = await registry.execute(
+            tool_name=tool_name,
+            arguments=policy.arguments,
+            context=state.get("execution_context"),
+        )
         research.tool_call_count += 1
 
         if not response["ok"]:
@@ -174,7 +211,12 @@ def create_research_graph(
             _fail(research, response["error"]["code"], response["error"]["message"])
             return {"research": research, "decision": None}
 
-        apply_tool_result(state=research, tool_name=tool_name, result=response["result"])
+        apply_tool_result(
+            state=research,
+            tool_name=tool_name,
+            result=response["result"],
+            arguments=policy.arguments,
+        )
         research.steps.append(ResearchStep(tool_name=tool_name, status="completed"))
         return {"research": research, "decision": None}
 

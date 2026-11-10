@@ -57,7 +57,7 @@ class GroqDecisionModel:
         body: dict[str, Any] = {
             "model": self._model,
             "messages": [
-                {"role": "system", "content": build_system_instruction()},
+                {"role": "system", "content": build_system_instruction(state.portfolio_mode)},
                 {
                     "role": "user",
                     "content": build_user_message(state, available_tools or []),
@@ -215,4 +215,3 @@ class GroqDecisionModel:
                 safe_message="The decision provider returned an invalid decision.",
                 status_code=502,
             ) from None
-

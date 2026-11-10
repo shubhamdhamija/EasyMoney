@@ -1,6 +1,13 @@
 from app.models.research_state import ResearchError, ResearchState, ResearchStep
+from app.models.tool_execution_context import ToolExecutionContext
 from app.services.decision_model import DecisionModel
-from app.services.tool_execution_policy import apply_tool_result, evaluate_tool_request
+from app.services.portfolio_research_setup import build_portfolio_research_state
+from app.services.tool_execution_policy import (
+    apply_tool_result,
+    evaluate_tool_request,
+    finish_error,
+    policy_rejection_error,
+)
 from app.tools.tool_registry import ToolRegistry
 
 
@@ -9,8 +16,8 @@ class ModelDrivenResearchPlanner:
 
     The decision model only proposes actions. Execution authority stays with the
     application: decision budget here, and duplicate protection, tool budget,
-    symbol pinning and news cap in the shared tool_execution_policy, plus the
-    registry allowlist.
+    symbol/portfolio pinning, consent and the news cap in the shared
+    tool_execution_policy, plus the registry allowlist and trusted context.
     """
 
     def __init__(
@@ -36,6 +43,31 @@ class ModelDrivenResearchPlanner:
             maximum_tool_calls=maximum_tool_calls,
             maximum_decisions=maximum_decisions,
         )
+        return await self._run(state, None, maximum_news_items)
+
+    async def research_portfolio(
+        self,
+        context: ToolExecutionContext,
+        *,
+        maximum_tool_calls: int = 5,
+        maximum_decisions: int = 8,
+        maximum_news_items: int = 3,
+    ) -> ResearchState:
+        """Portfolio research. The trusted context is application-issued; the model
+        cannot create or alter it."""
+        state = build_portfolio_research_state(
+            context,
+            maximum_tool_calls=maximum_tool_calls,
+            maximum_decisions=maximum_decisions,
+        )
+        return await self._run(state, context, maximum_news_items)
+
+    async def _run(
+        self,
+        state: ResearchState,
+        context: ToolExecutionContext | None,
+        maximum_news_items: int,
+    ) -> ResearchState:
         available_tools = self._registry.tool_definitions()
 
         while True:
@@ -50,11 +82,7 @@ class ModelDrivenResearchPlanner:
             state.decision_count += 1
 
             if decision.action == "finish":
-                if state.quote is None and state.error is None:
-                    state.error = ResearchError(
-                        code="QUOTE_NOT_COLLECTED",
-                        message="The workflow finished without collecting a quote.",
-                    )
+                state.error = finish_error(state) or state.error
                 return state
 
             tool_name = decision.tool_name
@@ -77,25 +105,17 @@ class ModelDrivenResearchPlanner:
                 state.steps.append(ResearchStep(tool_name=tool_name, status="skipped"))
                 continue
 
-            if policy.outcome == "limit_reached":
-                state.steps.append(ResearchStep(tool_name=tool_name, status="failed"))
-                state.error = ResearchError(
-                    code="TOOL_CALL_LIMIT_REACHED",
-                    message="The research workflow reached its tool-call limit.",
-                )
-                return state
-
-            if policy.outcome == "invalid_arguments":
-                state.steps.append(ResearchStep(tool_name=tool_name, status="failed"))
-                state.error = ResearchError(
-                    code="INVALID_TOOL_ARGUMENTS",
-                    message="The tool arguments are invalid.",
-                )
+            rejection = policy_rejection_error(policy.outcome)
+            if rejection is not None:
+                status = "rejected" if policy.outcome in ("consent_required", "portfolio_rejected") else "failed"
+                state.steps.append(ResearchStep(tool_name=tool_name, status=status))
+                state.error = rejection
                 return state
 
             tool_response = await self._registry.execute(
                 tool_name=tool_name,
                 arguments=policy.arguments,
+                context=context,
             )
             state.tool_call_count += 1
 
@@ -112,6 +132,6 @@ class ModelDrivenResearchPlanner:
                 state=state,
                 tool_name=tool_name,
                 result=tool_response["result"],
+                arguments=policy.arguments,
             )
             state.steps.append(ResearchStep(tool_name=tool_name, status="completed"))
-

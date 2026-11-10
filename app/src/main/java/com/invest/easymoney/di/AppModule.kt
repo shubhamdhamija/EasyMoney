@@ -55,6 +55,12 @@ abstract class AppModule {
         impl: com.invest.easymoney.data.portfolio.connection.PortfolioConnectionRepositoryImpl
     ): com.invest.easymoney.domain.portfolio.connection.PortfolioConnectionRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindPortfolioResearchRepository(
+        impl: com.invest.easymoney.data.portfolio.research.PortfolioResearchRepositoryImpl
+    ): com.invest.easymoney.domain.portfolio.research.PortfolioResearchRepository
+
     companion object {
         @Provides
         @Singleton

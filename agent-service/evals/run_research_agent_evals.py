@@ -97,9 +97,9 @@ class RecordingRegistry(ToolRegistry):
         super().__init__()
         self._log = log
 
-    async def execute(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, tool_name: str, arguments: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
         self._log.requests.append(tool_name)
-        return await super().execute(tool_name, arguments)
+        return await super().execute(tool_name, arguments, **kwargs)
 
 
 class InjectedNewsTool(FakeRecentNewsTool):
@@ -618,4 +618,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

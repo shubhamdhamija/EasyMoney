@@ -25,11 +25,13 @@ from app.errors.decision_provider_error import DecisionProviderError
 from app.langgraph_agent.research_graph import (
     create_research_graph,
     initial_graph_input,
+    initial_portfolio_graph_input,
     recursion_limit_for,
     thread_config,
 )
 from app.models.research_report import ResearchReport
 from app.models.tool_approval import ToolApprovalDecision, ToolApprovalRequest
+from app.models.tool_execution_context import ToolExecutionContext
 from app.request_context import get_request_id
 from app.services.decision_model import DecisionModel
 from app.services.disabled_decision_model import DisabledDecisionModel
@@ -81,6 +83,31 @@ class GraphAgentResearchService:
         await self._graph.ainvoke(
             initial_graph_input(
                 symbol=symbol,
+                maximum_tool_calls=maximum_tool_calls,
+                maximum_decisions=maximum_decisions,
+                maximum_news_items=maximum_news_items,
+            ),
+            config,
+        )
+        return await self._outcome(thread_id, started)
+
+    async def research_portfolio(
+        self,
+        execution_context: ToolExecutionContext,
+        *,
+        maximum_news_items: int = 3,
+        maximum_tool_calls: int = 5,
+        maximum_decisions: int = 8,
+    ) -> ResearchReport | ApprovalRequiredResult:
+        """Read-only portfolio research. The trusted context is issued by the
+        application after JWT authentication and consent verification."""
+        started = time.perf_counter()
+        thread_id = f"thr-{uuid.uuid4().hex}"
+        config = self._config(thread_id, maximum_decisions)
+
+        await self._graph.ainvoke(
+            initial_portfolio_graph_input(
+                execution_context=execution_context,
                 maximum_tool_calls=maximum_tool_calls,
                 maximum_decisions=maximum_decisions,
                 maximum_news_items=maximum_news_items,
@@ -183,5 +210,3 @@ class GraphAgentResearchService:
             (time.perf_counter() - started) * 1000,
         )
         return report
-
-

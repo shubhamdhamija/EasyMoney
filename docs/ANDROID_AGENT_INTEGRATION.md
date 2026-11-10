@@ -169,3 +169,15 @@ Lexical retrieval remains the default if hybrid retrieval remains experimental.
 ## Current limitation statement
 
 The Android app integrates the existing agent research flow into the real stock detail screen without altering the backend contracts, retrieval pipeline, or LangGraph workflow.
+
+## Portfolio research (read-only, explicit consent)
+
+The Portfolio screen shows **Research my portfolio** for the active source. Pressing it only opens a consent dialog; nothing is sent on screen open, rotation or recomposition.
+
+* Dialog: title, body ("EasyMoney will use your selected portfolio snapshot to prepare research. No trades or account changes will be made."), source, snapshot time, toggles (Accounts and Holdings are required and on, Cash on, Book values off by default), Cancel and Continue.
+* `PortfolioResearchRepository`: `createResearchConsent`, `startPortfolioResearch`, `revokeResearchConsent`. SnapTrade Sandbox portfolios send only the opaque ID in a path. A CSV portfolio sends a normalized subset (max 50 positions, largest first; account type only, no account numbers, hashes, names, file URIs or raw CSV; book value only with consent) to `POST /portfolio/local-context`.
+* `PortfolioResearchViewModel` states: Idle, ConsentRequired, CreatingConsent, Researching, Success, Error. It uses no `SavedStateHandle`, holds no consent ID in UI state, revokes consent when a run ends, and a retry reopens the dialog (never silently re-sends).
+* The result card shows source, snapshot time, per-currency summaries (CAD and USD separate), holdings, concentration, evidence, warnings and "No trades or account changes were made." It never shows connection IDs, account numbers, hashes, consent IDs, model name, prompt, tool-call count, reasoning or vector scores, and has no trading controls.
+* The JWT used by the existing `AgentAuthInterceptor` needs `portfolio:read`.
+
+Details: `agent-service/docs/PORTFOLIO_AGENT_TOOLS.md`.

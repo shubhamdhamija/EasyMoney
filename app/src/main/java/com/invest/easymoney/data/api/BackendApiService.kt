@@ -123,6 +123,30 @@ interface BackendApiService {
         @Path("connectionId") connectionId: String,
         @Query("confirm") confirm: Boolean = true
     ): Response<ResponseBody>
+
+    // --- Read-only portfolio research (explicit consent required). No trading endpoints. ---
+
+    @POST("portfolio/local-context")
+    suspend fun createLocalPortfolioContext(
+        @Body request: com.invest.easymoney.data.api.dto.LocalPortfolioContextDto
+    ): com.invest.easymoney.data.api.dto.LocalContextResponseDto
+
+    @POST("portfolio/{portfolioId}/research-consent")
+    suspend fun createPortfolioResearchConsent(
+        @Path("portfolioId") portfolioId: String,
+        @Body request: com.invest.easymoney.data.api.dto.ResearchConsentRequestDto
+    ): com.invest.easymoney.data.api.dto.ResearchConsentResponseDto
+
+    @retrofit2.http.DELETE("portfolio/{portfolioId}/research-consent/{consentId}")
+    suspend fun revokePortfolioResearchConsent(
+        @Path("portfolioId") portfolioId: String,
+        @Path("consentId") consentId: String
+    ): Response<ResponseBody>
+
+    @POST("agent/portfolio-research")
+    suspend fun startPortfolioResearch(
+        @Body request: com.invest.easymoney.data.api.dto.PortfolioResearchRequestDto
+    ): com.invest.easymoney.data.api.dto.PortfolioResearchReportDto
 }
 
 data class WatchlistChangePayload(
@@ -143,4 +167,3 @@ data class UpcomingEarningsResponse(
     val earnings: List<UpcomingEarningDto>? = null,
     val error: String? = null
 )
-

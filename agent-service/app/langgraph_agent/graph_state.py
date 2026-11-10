@@ -4,6 +4,7 @@ from app.models.planner_decision import PlannerDecision
 from app.models.research_report import ResearchReport
 from app.models.research_state import ResearchState
 from app.models.tool_approval import PendingApproval
+from app.models.tool_execution_context import ToolExecutionContext
 
 
 class GraphState(TypedDict, total=False):
@@ -22,4 +23,6 @@ class GraphState(TypedDict, total=False):
     pending_approval: PendingApproval | None
     # Approval IDs that were already decided. Makes approvals single-use.
     consumed_approval_ids: list[str]
-
+    # Application-issued trusted identity for portfolio tools (never model-controlled).
+    # Holds tenant/user IDs and opaque portfolio/consent IDs only: no JWT, no secrets.
+    execution_context: ToolExecutionContext | None

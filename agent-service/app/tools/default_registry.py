@@ -71,3 +71,44 @@ def create_research_registry(
     if include_write_tools:
         registry.register(FakeSaveResearchReportTool())
     return registry
+
+
+PORTFOLIO_TOOL_NAMES = (
+    "get_portfolio_summary",
+    "get_portfolio_positions",
+    "get_portfolio_position",
+    "analyze_portfolio_concentration",
+)
+
+
+def create_portfolio_research_registry(
+    *,
+    runtime,
+    quote_tool=None,
+    news_tool=None,
+    document_search_tool: SearchFinancialDocumentsTool | None = None,
+    include_write_tools: bool = False,
+    report_store: FakeResearchReportStore | None = None,
+) -> ToolRegistry:
+    """Explicit portfolio-research registry.
+
+    Market tools + the four read-only portfolio tools. The save-research-report tool
+    stays optional and approval-required. No brokerage-write tool exists anywhere.
+    """
+    from app.tools.analyze_portfolio_concentration_tool import AnalyzePortfolioConcentrationTool
+    from app.tools.get_portfolio_position_tool import GetPortfolioPositionTool
+    from app.tools.get_portfolio_positions_tool import GetPortfolioPositionsTool
+    from app.tools.get_portfolio_summary_tool import GetPortfolioSummaryTool
+
+    registry = ToolRegistry()
+    registry.register(quote_tool if quote_tool is not None else FakeStockQuoteTool())
+    registry.register(news_tool if news_tool is not None else FakeRecentNewsTool())
+    if document_search_tool is not None:
+        registry.register(document_search_tool)
+    registry.register(GetPortfolioSummaryTool(runtime))
+    registry.register(GetPortfolioPositionsTool(runtime))
+    registry.register(GetPortfolioPositionTool(runtime))
+    registry.register(AnalyzePortfolioConcentrationTool(runtime))
+    if include_write_tools:
+        registry.register(FakeSaveResearchReportTool(report_store))
+    return registry

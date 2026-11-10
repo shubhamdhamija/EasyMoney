@@ -1,6 +1,7 @@
 import re
 
 from app.models.financial_document import FinancialCitation
+from app.models.portfolio_agent import PORTFOLIO_REPORT_STATEMENT
 from app.models.research_report import ResearchReport
 from app.models.research_state import ResearchState
 
@@ -77,12 +78,119 @@ def _to_headlines(articles: list[object]) -> list[dict[str, object]]:
     return headlines
 
 
+_MAX_REPORT_POSITIONS = 20
+_MAX_REPORT_WARNINGS = 12
+
+
+def _portfolio_positions(state: ResearchState) -> list[dict]:
+    """Distinct positions from tool results. Only safe display fields (no position IDs)."""
+    seen: set[str] = set()
+    rows: list[dict] = []
+
+    def add(position: dict) -> None:
+        key = str(position.get("position_id"))
+        if key in seen or len(rows) >= _MAX_REPORT_POSITIONS:
+            return
+        seen.add(key)
+        rows.append({k: v for k, v in position.items() if k != "position_id"})
+
+    for result in state.portfolio_position_results:
+        for position in result.get("positions") or []:
+            add(position)
+        for security in result.get("securities") or []:
+            for position in security.get("positions") or []:
+                add(position)
+    return rows
+
+
+def _portfolio_warnings(state: ResearchState) -> list[dict]:
+    seen: set[tuple] = set()
+    warnings: list[dict] = []
+    results = [state.portfolio_summary, *state.portfolio_position_results, *state.portfolio_concentration_results]
+    for result in results:
+        for warning in (result or {}).get("warnings") or []:
+            key = (warning.get("code"), warning.get("currency"))
+            if key not in seen and len(warnings) < _MAX_REPORT_WARNINGS:
+                seen.add(key)
+                warnings.append(warning)
+    return warnings
+
+
+def _build_portfolio_report(state: ResearchState, completed_tools: list[str]) -> ResearchReport:
+    evidence_summary, citations = _to_evidence_summary(
+        state.document_results.model_dump(mode="json") if state.document_results else None
+    )
+    summary_data = state.portfolio_summary or {}
+    currency_summaries = list(summary_data.get("currency_summaries") or [])
+    has_evidence = bool(
+        state.portfolio_summary is not None
+        or state.portfolio_position_results
+        or state.portfolio_concentration_results
+    )
+
+    if not has_evidence:
+        return ResearchReport(
+            symbol=state.symbol,
+            status="failed",
+            summary="Portfolio research could not be completed.",
+            tools_used=completed_tools,
+            error_code=(state.error.code if state.error else "UNKNOWN_ERROR"),
+            agent_used=state.agent_used,
+            evidence_summary=evidence_summary,
+            citations=citations,
+            portfolio_source=state.portfolio_source,
+            portfolio_snapshot_at=state.portfolio_snapshot_at,
+            portfolio_disclaimer=PORTFOLIO_REPORT_STATEMENT,
+        )
+
+    parts = [f"Portfolio research used a read-only {state.portfolio_source or 'portfolio'} snapshot."]
+    for item in currency_summaries:
+        parts.append(
+            f"{item.get('currency')}: investments {item.get('investment_market_value')} "
+            f"across {item.get('position_count')} position"
+            f"{'' if item.get('position_count') == 1 else 's'}."
+        )
+    for item in state.portfolio_concentration_results:
+        weight = item.get("largest_position_weight_percent")
+        largest = item.get("largest_position") or {}
+        if weight is not None:
+            label = largest.get("symbol") or largest.get("security_name") or "largest position"
+            parts.append(f"{item.get('currency')}: {label} is {weight}% of eligible holdings.")
+    parts.append(PORTFOLIO_REPORT_STATEMENT)
+
+    articles = state.news.get("articles", []) if state.news else []
+
+    return ResearchReport(
+        symbol=state.symbol,
+        status="partial" if state.error is not None else "completed",
+        summary=" ".join(parts),
+        quote=state.quote,
+        news_count=len(articles),
+        tools_used=completed_tools,
+        error_code=(state.error.code if state.error else None),
+        agent_used=state.agent_used,
+        evidence_summary=evidence_summary,
+        citations=citations,
+        headlines=_to_headlines(articles),
+        portfolio_snapshot_at=state.portfolio_snapshot_at,
+        portfolio_source=state.portfolio_source,
+        portfolio_currency_summaries=currency_summaries,
+        portfolio_positions=_portfolio_positions(state),
+        portfolio_concentration=list(state.portfolio_concentration_results),
+        portfolio_warnings=_portfolio_warnings(state),
+        portfolio_disclaimer=PORTFOLIO_REPORT_STATEMENT,
+    )
+
+
 def build_research_report(state: ResearchState) -> ResearchReport:
     completed_tools = [
         step.tool_name
         for step in state.steps
         if step.status == "completed"
     ]
+
+    if state.portfolio_mode:
+        return _build_portfolio_report(state, completed_tools)
 
     evidence_summary, citations = _to_evidence_summary(state.document_results.model_dump(mode="json") if state.document_results else None)
 

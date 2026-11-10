@@ -70,3 +70,7 @@ by `PortfolioSummaryCalculator`, never by an LLM.
 ## Known limitations
 Conflicting duplicates are rejected rather than user-resolved; no FX totals; app-level salt is constant;
 no history of prior snapshots; snapshots with missing timestamps get a new fingerprint on each import.
+
+## Portfolio research (read-only)
+
+A CSV portfolio can be researched by the AI agent only after an explicit consent dialog. The CSV file never leaves the device: Android sends a normalized, bounded subset (max 50 positions, largest market value first) with symbol, name, security type, account **type**, quantity, market value, currency and, only with consent, book value. Account numbers, account-number hashes, file names/URIs and raw CSV are never sent. The server keeps it in memory for about 15 minutes. See `agent-service/docs/PORTFOLIO_AGENT_TOOLS.md`.

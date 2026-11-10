@@ -80,8 +80,8 @@ class EvalRegistry(ToolRegistry):
         super().__init__()
         self.requests: list[tuple[str, str | None, bool]] = []
 
-    async def execute(self, tool_name, arguments, *, approval=None):
-        response = await super().execute(tool_name, arguments, approval=approval)
+    async def execute(self, tool_name, arguments, *, approval=None, context=None):
+        response = await super().execute(tool_name, arguments, approval=approval, context=context)
         self.requests.append(
             (tool_name, approval.approval_id if approval else None, response["ok"])
         )
@@ -410,4 +410,3 @@ def approval_report_payload(evaluation: dict[str, Any]) -> dict[str, Any]:
         "summary": evaluation["summary"],
         "cases": [asdict(r) for r in evaluation["results"]],
     }
-

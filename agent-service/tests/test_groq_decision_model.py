@@ -276,7 +276,7 @@ async def test_no_sensitive_data_is_logged(caplog) -> None:
     assert "Bearer" not in logged
     assert "PROVIDER-BODY-LEAK" not in logged
     assert "RAW-MODEL-OUTPUT-LEAK" not in logged
-    assert "research-agent-v1" not in logged
+    assert "research-agent-v2" not in logged
     assert "Rules:" not in logged
 
 
@@ -284,4 +284,3 @@ def test_repr_does_not_expose_key() -> None:
     model = GroqDecisionModel(api_key=API_KEY)
 
     assert API_KEY not in repr(model)
-

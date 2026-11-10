@@ -4,7 +4,9 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.errors.portfolio_agent_error import consent_required
 from app.models.tool_definition import ToolDefinition
+from app.models.tool_execution_context import ToolExecutionContext
 from app.tools.approved_execution import ApprovedExecutionContext
 from app.tools.tool_errors import ToolError
 
@@ -22,6 +24,7 @@ class ToolRegistry:
         arguments: dict[str, Any],
         *,
         approval: ApprovedExecutionContext | None = None,
+        context: ToolExecutionContext | None = None,
     ) -> dict[str, Any]:
         tool = self._tools.get(tool_name)
 
@@ -48,6 +51,17 @@ class ToolRegistry:
                 },
             }
 
+        # Read-only does not mean public: portfolio tools need the trusted,
+        # application-issued context (authenticated principal + consent).
+        needs_context = getattr(tool, "requires_trusted_context", False) is True
+        if needs_context and not (
+            isinstance(context, ToolExecutionContext)
+            and context.authenticated
+            and context.portfolio_consent_granted
+        ):
+            denied = consent_required()
+            return {"ok": False, "error": {"code": denied.code, "message": denied.message}}
+
         try:
             validated_input = tool.input_model.model_validate(arguments)
         except ValidationError:
@@ -60,7 +74,10 @@ class ToolRegistry:
             }
 
         try:
-            result = await tool.execute(validated_input)
+            if needs_context:
+                result = await tool.execute(validated_input, context)
+            else:
+                result = await tool.execute(validated_input)
         except ToolError as error:
             return {
                 "ok": False,

@@ -160,3 +160,7 @@ The agent does not use SnapTrade. A later milestone may expose normalized, conse
 
 Real Wealthsimple connectivity remains disabled and is not implemented. SnapTrade production access is deferred to a
 separate milestone. SnapTrade Sandbox portfolio connection is verified end to end using simulated accounts.
+
+### Portfolio research
+
+The synchronized Sandbox portfolio can be researched by the read-only portfolio agent tools after explicit consent. The agent reads only the already-normalized snapshot through the existing tenant/user/connection ownership check. It never sees SnapTrade credentials, provider user secrets, connection tokens or IDs, raw provider payloads or account numbers, and there is no provider call during research. See `agent-service/docs/PORTFOLIO_AGENT_TOOLS.md`.

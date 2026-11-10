@@ -6,6 +6,9 @@ from fastapi.responses import JSONResponse
 from app.api.agent_research_routes import router as agent_research_router
 from app.api.congress_routes import router as congress_router
 from app.api.portfolio_connection_routes import router as portfolio_connection_router
+from app.api.portfolio_research_routes import consent_router as portfolio_consent_router
+from app.api.portfolio_research_routes import research_router as portfolio_research_router
+from app.errors.portfolio_agent_error import PortfolioAgentError
 from app.api.research_routes import router as research_router
 from app.errors.agent_configuration_error import AgentConfigurationError
 from app.errors.approval_error import ApprovalError
@@ -129,6 +132,24 @@ async def handle_portfolio_connection_error(
     )
 
 
+@app.exception_handler(PortfolioAgentError)
+async def handle_portfolio_agent_error(
+    request: Request, error: PortfolioAgentError
+) -> JSONResponse:
+    # Stable code only: never portfolio contents, IDs, or consent details.
+    logger.warning(
+        "portfolio_agent_error request_id=%s code=%s",
+        _request_id(request),
+        error.code,
+    )
+    return _error_response(
+        request,
+        status_code=error.status_code,
+        code=error.code,
+        message=error.safe_message,
+    )
+
+
 @app.exception_handler(AuthError)
 async def handle_auth_error(request: Request, error: AuthError) -> JSONResponse:
     # Log the stable code only: never thread IDs, approval IDs, or arguments.
@@ -173,3 +194,5 @@ app.include_router(research_router)
 app.include_router(agent_research_router)
 app.include_router(congress_router)
 app.include_router(portfolio_connection_router)
+app.include_router(portfolio_consent_router)
+app.include_router(portfolio_research_router)

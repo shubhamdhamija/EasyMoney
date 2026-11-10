@@ -14,7 +14,7 @@ def tools():
 
 
 def test_prompt_version() -> None:
-    assert AGENT_PROMPT_VERSION == "research-agent-v1"
+    assert AGENT_PROMPT_VERSION == "research-agent-v2"
     assert AGENT_PROMPT_VERSION in build_user_message(ResearchState(symbol="AAPL"), tools())
 
 
@@ -128,4 +128,3 @@ def test_prompts_contain_no_secrets_or_provider_config() -> None:
 
     for word in ("GROQ", "api_key", "Authorization", "Bearer"):
         assert word not in combined
-

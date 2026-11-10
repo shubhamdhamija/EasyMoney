@@ -137,8 +137,10 @@ private fun positiveText(value: BigDecimal?, currency: String?) =
 fun PortfolioScreen(
     importViewModel: PortfolioImportViewModel = hiltViewModel(),
     portfolioViewModel: PortfolioViewModel = hiltViewModel(),
-    connectionViewModel: PortfolioConnectionViewModel = hiltViewModel()
+    connectionViewModel: PortfolioConnectionViewModel = hiltViewModel(),
+    researchViewModel: com.invest.easymoney.ui.portfolio.research.PortfolioResearchViewModel = hiltViewModel()
 ) {
+    val researchState by researchViewModel.state.collectAsStateWithLifecycle()
     val importState by importViewModel.state.collectAsStateWithLifecycle()
     val ui by portfolioViewModel.uiState.collectAsStateWithLifecycle()
     val connectionState by connectionViewModel.state.collectAsStateWithLifecycle()
@@ -179,6 +181,8 @@ fun PortfolioScreen(
     }
 
     val currencies = activeSummary?.byCurrency?.map { it.currency } ?: emptyList()
+    // A result for one source must not linger when the user switches to another.
+    LaunchedEffect(activeSource) { researchViewModel.reset() }
     LaunchedEffect(currencies, selectedCurrency) {
         if (currencies.isNotEmpty() && selectedCurrency !in currencies) {
             selectedCurrency = currencies.first()
@@ -229,6 +233,25 @@ fun PortfolioScreen(
             ) {
                 ConnectDemoBrokerageCard(enabled = true, onConnect = { showConsent = true })
             }
+            // Read-only AI research. Starts only after an explicit button press and consent dialog.
+            val researchTarget: com.invest.easymoney.domain.portfolio.research.ResearchPortfolioTarget? = when {
+                activeSource == ActivePortfolioSource.SNAPTRADE_SANDBOX && connection != null ->
+                    com.invest.easymoney.domain.portfolio.research.ResearchPortfolioTarget.Connected(
+                        connection.connectionId, connection.lastSuccessfulSyncAt
+                    )
+                activeSource == ActivePortfolioSource.CSV && csvPortfolio != null ->
+                    com.invest.easymoney.domain.portfolio.research.ResearchPortfolioTarget.LocalCsv(csvPortfolio)
+                else -> null
+            }
+            com.invest.easymoney.ui.portfolio.research.PortfolioResearchSection(
+                state = researchState,
+                target = researchTarget,
+                onResearch = researchViewModel::requestResearch,
+                onConfirm = researchViewModel::confirmConsent,
+                onCancelConsent = researchViewModel::cancelConsent,
+                onRetry = researchViewModel::retry,
+                onDismiss = researchViewModel::reset
+            )
         }
     }
 

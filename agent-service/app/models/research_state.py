@@ -38,6 +38,24 @@ class ResearchState(BaseModel):
     decision_count: int = Field(default=0, ge=0)
     maximum_decisions: int = Field(default=8, ge=1, le=20)
 
+    # Portfolio research (all optional, backward compatible). Only opaque IDs and
+    # bounded tool results: never credentials, provider connection IDs, raw
+    # account numbers, account hashes, raw CSV, file URIs, device IDs, JWTs or raw
+    # provider responses. Full holdings beyond the bounded tool results are never kept.
+    selected_portfolio_id: str | None = Field(default=None, max_length=64)
+    portfolio_source: str | None = Field(default=None, max_length=32)
+    portfolio_snapshot_at: str | None = Field(default=None, max_length=40)
+    portfolio_consent_id: str | None = Field(default=None, max_length=64)
+    portfolio_summary: dict[str, Any] | None = None
+    portfolio_position_results: list[dict[str, Any]] = Field(default_factory=list, max_length=10)
+    portfolio_concentration_results: list[dict[str, Any]] = Field(default_factory=list, max_length=5)
+    # Hashes of completed portfolio tool requests (duplicate protection across resume).
+    portfolio_tool_requests: list[str] = Field(default_factory=list, max_length=20)
+
+    @property
+    def portfolio_mode(self) -> bool:
+        return self.selected_portfolio_id is not None
+
     @property
     def ok(self) -> bool:
         return self.error is None

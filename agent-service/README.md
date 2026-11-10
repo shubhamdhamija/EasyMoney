@@ -52,3 +52,17 @@ See `evals/README.md` and `docs/RAG_EVALUATION.md`.
 
 `app/langgraph_agent/` re-implements the same loop as a LangGraph graph for learning and
 comparison. The custom `ModelDrivenResearchPlanner` remains the reference implementation.
+
+## Portfolio-grounded research (read-only)
+
+Four read-only tools (`get_portfolio_summary`, `get_portfolio_positions`, `get_portfolio_position`,
+`analyze_portfolio_concentration`) ground a report in a consented portfolio snapshot. Totals and weights are
+computed by the application, never the model. Endpoints (JWT with `portfolio:read`):
+
+* `POST /portfolio/local-context` (request-scoped CSV subset, max 50 positions / 256 KB)
+* `POST /portfolio/{id}/research-consent`, `DELETE /portfolio/{id}/research-consent/{consent_id}`
+* `POST /agent/portfolio-research`
+
+No trading, transfer or rebalance capability exists. See
+[docs/PORTFOLIO_AGENT_TOOLS.md](docs/PORTFOLIO_AGENT_TOOLS.md) and
+[docs/AGENT_ARCHITECTURE.md](docs/AGENT_ARCHITECTURE.md).
