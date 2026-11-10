@@ -6,3 +6,6 @@ __pycache__/
 .env.*
 !.env.example
 
+
+# Local runtime databases (portfolio and agent state)
+app/data/

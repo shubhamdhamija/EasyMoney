@@ -5,6 +5,16 @@
 **EasyMoney does not receive brokerage credentials and cannot place trades,
 transfer funds, or modify a Wealthsimple account.**
 
+## Optional alternative source: SnapTrade Sandbox
+
+CSV import is the default method. SnapTrade Sandbox (development-only) is an optional alternative source; see
+[SNAPTRADE_SANDBOX.md](SNAPTRADE_SANDBOX.md).
+
+- EasyMoney requests a read-only connection.
+- EasyMoney has no order, transfer, deposit or withdrawal capability.
+- SnapTrade Sandbox uses simulated data and does not connect a real brokerage account.
+- CSV and sandbox portfolios are displayed separately and never merged.
+
 ## Supported report
 Wealthsimple "holdings report" CSV. Required headers (case-insensitive, BOM/whitespace trimmed):
 Account Name, Account Type, Account Classification, Account Number, Symbol, Exchange, MIC, Name,
@@ -60,4 +70,3 @@ by `PortfolioSummaryCalculator`, never by an LLM.
 ## Known limitations
 Conflicting duplicates are rejected rather than user-resolved; no FX totals; app-level salt is constant;
 no history of prior snapshots; snapshots with missing timestamps get a new fingerprint on each import.
-

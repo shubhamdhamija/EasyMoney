@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.agent_research_routes import router as agent_research_router
 from app.api.congress_routes import router as congress_router
+from app.api.portfolio_connection_routes import router as portfolio_connection_router
 from app.api.research_routes import router as research_router
 from app.errors.agent_configuration_error import AgentConfigurationError
 from app.errors.approval_error import ApprovalError
@@ -12,8 +13,15 @@ from app.errors.decision_provider_error import DecisionProviderError
 from app.middleware.request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from app.auth.auth_errors import AuthError
 from app.auth.auth_models import AuthenticatedPrincipal
+from app.config.settings import get_settings
+from app.portfolio_connections.config import assert_read_only_configuration
+from app.portfolio_connections.errors import PortfolioConnectionError
 
 logger = logging.getLogger(__name__)
+
+# Fail fast if SNAPTRADE_CONNECTION_TYPE is anything but "read" (e.g. trade,
+# trade-if-available), even while the feature is disabled.
+assert_read_only_configuration(get_settings())
 
 
 app = FastAPI(
@@ -103,6 +111,24 @@ async def handle_approval_error(request: Request, error: ApprovalError) -> JSONR
     )
 
 
+@app.exception_handler(PortfolioConnectionError)
+async def handle_portfolio_connection_error(
+    request: Request, error: PortfolioConnectionError
+) -> JSONResponse:
+    # Stable code only: never provider payloads, IDs, URLs or secrets.
+    logger.warning(
+        "portfolio_connection_error request_id=%s code=%s",
+        _request_id(request),
+        error.code,
+    )
+    return _error_response(
+        request,
+        status_code=error.status_code,
+        code=error.code,
+        message=error.safe_message,
+    )
+
+
 @app.exception_handler(AuthError)
 async def handle_auth_error(request: Request, error: AuthError) -> JSONResponse:
     # Log the stable code only: never thread IDs, approval IDs, or arguments.
@@ -146,3 +172,4 @@ async def health() -> dict[str, str]:
 app.include_router(research_router)
 app.include_router(agent_research_router)
 app.include_router(congress_router)
+app.include_router(portfolio_connection_router)

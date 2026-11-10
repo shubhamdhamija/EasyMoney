@@ -21,10 +21,22 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.EasyMoney">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- SnapTrade Sandbox Connection Portal return. Only this exact scheme/host/path;
+                 the callback is a hint and is verified with the backend before use. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="easymoney"
+                    android:host="portfolio"
+                    android:path="/snaptrade" />
             </intent-filter>
         </activity>
 

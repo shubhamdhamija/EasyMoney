@@ -3,7 +3,13 @@ package com.invest.easymoney.domain.portfolio
 import java.math.BigDecimal
 import java.time.Instant
 
-enum class Broker { WEALTHSIMPLE, GENERIC_CSV, MANUAL }
+enum class Broker { WEALTHSIMPLE, GENERIC_CSV, MANUAL, SNAPTRADE }
+
+/**
+ * Where a portfolio snapshot came from. Sources are always displayed separately and never merged.
+ * SNAPTRADE_LIVE is reserved for a future, separately reviewed milestone and must not be exposed in UI.
+ */
+enum class PortfolioSource { WEALTHSIMPLE_CSV, SNAPTRADE_SANDBOX, SNAPTRADE_LIVE, MANUAL, DEMO }
 
 @JvmInline
 value class CurrencyCode(val value: String)
@@ -44,7 +50,9 @@ data class PortfolioSnapshot(
     val accountCount: Int,
     val positionCount: Int,
     val cashBalanceCount: Int,
-    val fingerprint: String
+    val fingerprint: String,
+    /** Not persisted by Room: stored CSV snapshots default to WEALTHSIMPLE_CSV. */
+    val source: PortfolioSource = PortfolioSource.WEALTHSIMPLE_CSV
 )
 
 data class PortfolioAccount(
@@ -159,4 +167,3 @@ data class Portfolio(
 
 /** Safe, user-presentable import failure. */
 class PortfolioImportException(message: String) : Exception(message)
-

@@ -31,7 +31,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Development-only JWT from git-ignored local.properties (AGENT_DEV_JWT). Never committed.
+            val devJwt = localProperties["AGENT_DEV_JWT"]?.toString()?.trim().orEmpty()
+            buildConfigField("String", "DEV_AGENT_JWT", "\"$devJwt\"")
+        }
         release {
+            buildConfigField("String", "DEV_AGENT_JWT", "\"\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -76,6 +82,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.browser)
 
     // Lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)

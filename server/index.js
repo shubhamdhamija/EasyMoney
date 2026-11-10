@@ -36,6 +36,9 @@ const {
   createStockPicksRouter
 } = require('./routes/stockPicksRoutes');
 const {
+  createPortfolioConnectionProxyRouter
+} = require('./routes/portfolioConnectionRoutes');
+const {
   requestIdMiddleware
 } = require(
   './middleware/requestId'
@@ -344,6 +347,12 @@ app.get('/ai/predict/:symbol', async (req, res) => {
 
 // Proxy route for Android requests to /agent/research
 const agentServiceBaseUrl = process.env.AGENT_SERVICE_URL || 'http://127.0.0.1:8090';
+
+// Allow-listed, read-only SnapTrade Sandbox connection proxy (agent-service owns the integration).
+app.use(
+  '/portfolio/connections',
+  createPortfolioConnectionProxyRouter({ agentServiceBaseUrl, httpClient: axios })
+);
 
 async function proxyAgentRequest(req, res, endpoint, method = 'POST') {
   try {

@@ -82,6 +82,47 @@ interface BackendApiService {
         @Path("docId") docId: String,
         @Query("filed") filed: String? = null
     ): com.invest.easymoney.data.api.dto.CongressFilingDetailDto
+
+    // --- Read-only portfolio connections (SnapTrade Sandbox). No trading endpoints. ---
+
+    @POST("portfolio/connections/snaptrade/session")
+    suspend fun createSnapTradeSession(
+        @Body request: com.invest.easymoney.data.api.dto.CreateConnectionSessionRequestDto
+    ): com.invest.easymoney.data.api.dto.ConnectionSessionResponseDto
+
+    @POST("portfolio/connections/snaptrade/{sessionId}/complete")
+    suspend fun completeSnapTradeConnection(
+        @Path("sessionId") sessionId: String
+    ): com.invest.easymoney.data.api.dto.ConnectedPortfolioResponseDto
+
+    @GET("portfolio/connections")
+    suspend fun getPortfolioConnections(): com.invest.easymoney.data.api.dto.ConnectionsResponseDto
+
+    @GET("portfolio/connections/{connectionId}/portfolio")
+    suspend fun getConnectionPortfolio(
+        @Path("connectionId") connectionId: String
+    ): com.invest.easymoney.data.api.dto.ConnectedPortfolioResponseDto
+
+    @POST("portfolio/connections/{connectionId}/sync")
+    suspend fun syncPortfolioConnection(
+        @Path("connectionId") connectionId: String
+    ): com.invest.easymoney.data.api.dto.ConnectedPortfolioResponseDto
+
+    @POST("portfolio/connections/{connectionId}/reconnect-session")
+    suspend fun createReconnectSession(
+        @Path("connectionId") connectionId: String
+    ): com.invest.easymoney.data.api.dto.ConnectionSessionResponseDto
+
+    @retrofit2.http.DELETE("portfolio/connections/{connectionId}")
+    suspend fun disconnectPortfolioConnection(
+        @Path("connectionId") connectionId: String
+    ): Response<ResponseBody>
+
+    @retrofit2.http.DELETE("portfolio/connections/{connectionId}/data")
+    suspend fun deleteConnectionData(
+        @Path("connectionId") connectionId: String,
+        @Query("confirm") confirm: Boolean = true
+    ): Response<ResponseBody>
 }
 
 data class WatchlistChangePayload(
